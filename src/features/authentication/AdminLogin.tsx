@@ -1,37 +1,73 @@
 import * as React from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck, Sparkles, Shield } from 'lucide-react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck, Sparkles, Shield, Loader2 } from 'lucide-react'
 import { Logo } from '@/components/shared/Logo'
 import { DemoNotice } from '@/components/shared/DemoNotice'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog } from '@/components/ui/dialog'
+import { useAuth } from '@/app/providers/AuthContext'
 
 export const AdminLogin: React.FC = () => {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { signInWithPassword, resetPasswordForEmail, loginAsDemo, isConfigured } = useAuth()
+
   const [email, setEmail] = React.useState('')
   const [password, setPassword] = React.useState('')
   const [showPassword, setShowPassword] = React.useState(false)
-  const [validationError, setValidationError] = React.useState<string | null>(null)
+  const [loading, setLoading] = React.useState(false)
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [isForgotOpen, setIsForgotOpen] = React.useState(false)
   const [forgotEmail, setForgotEmail] = React.useState('')
+  const [forgotLoading, setForgotLoading] = React.useState(false)
   const [forgotSent, setForgotSent] = React.useState(false)
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorMessage(null)
+
     if (!email.trim() || !password.trim()) {
-      setValidationError('Please enter your faculty/admin credentials.')
+      setErrorMessage('Please enter both faculty email and password.')
       return
     }
-    setValidationError(
-      'Live Supabase Auth is scheduled for Stage 2. Please click "Explore Admin Demo" below to launch the faculty dashboard preview immediately.'
-    )
+
+    setLoading(true)
+    try {
+      const res = await signInWithPassword(email.trim(), password)
+      if (res.error) {
+        setErrorMessage(res.error.message || 'Invalid credentials. Please verify your faculty email and password.')
+      } else {
+        const from = (location.state as any)?.from?.pathname || '/admin'
+        navigate(from, { replace: true })
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'An unexpected error occurred.')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleForgotSubmit = (e: React.FormEvent) => {
+  const handleDemoLogin = () => {
+    loginAsDemo('admin')
+    navigate('/admin', { replace: true })
+  }
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!forgotEmail.trim()) return
-    setForgotSent(true)
+
+    setForgotLoading(true)
+    try {
+      const res = await resetPasswordForEmail(forgotEmail.trim())
+      if (res.error) {
+        setErrorMessage(res.error.message)
+      } else {
+        setForgotSent(true)
+      }
+    } finally {
+      setForgotLoading(false)
+    }
   }
 
   return (
@@ -60,15 +96,15 @@ export const AdminLogin: React.FC = () => {
           <div className="p-4 rounded-2xl bg-purple-50/90 border border-purple-200 space-y-3">
             <div className="flex items-center gap-2 text-xs font-bold text-purple-950">
               <Sparkles className="h-4 w-4 text-purple-700" />
-              <span>Development Preview Mode</span>
+              <span>Interactive Faculty Preview</span>
             </div>
             <p className="text-xs text-purple-800 leading-relaxed">
-              Experience the desktop-optimized faculty dashboard, Mentor 360°, attendance discrepancy tracker, and approval centre:
+              Experience the desktop faculty dashboard, Mentor 360°, student list, and approval centre immediately:
             </p>
             <Button
               type="button"
               variant="primary"
-              onClick={() => navigate('/admin')}
+              onClick={handleDemoLogin}
               className="w-full bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs py-2.5 shadow-md shadow-purple-200"
             >
               <Shield className="h-4 w-4 mr-1.5" />
@@ -83,21 +119,21 @@ export const AdminLogin: React.FC = () => {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-white px-3 text-slate-400 font-semibold tracking-wider">
-                Or Visual Sign In Flow
+                Or Sign In With Supabase
               </span>
             </div>
           </div>
 
           <form onSubmit={handleFormSubmit} className="space-y-4">
-            {validationError && (
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800 font-medium">
-                {validationError}
+            {errorMessage && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium leading-relaxed">
+                {errorMessage}
               </div>
             )}
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Faculty Email ID
+                Faculty Institutional Email
               </label>
               <div className="relative">
                 <input
@@ -106,8 +142,9 @@ export const AdminLogin: React.FC = () => {
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value)
-                    setValidationError(null)
+                    setErrorMessage(null)
                   }}
+                  required
                   className="w-full h-10 pl-10 pr-3.5 text-sm rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
                 />
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
@@ -134,8 +171,9 @@ export const AdminLogin: React.FC = () => {
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value)
-                    setValidationError(null)
+                    setErrorMessage(null)
                   }}
+                  required
                   className="w-full h-10 pl-10 pr-10 text-sm rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
                 />
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
@@ -150,17 +188,31 @@ export const AdminLogin: React.FC = () => {
               </div>
             </div>
 
-            <Button type="submit" variant="outline" className="w-full mt-2">
-              Sign In (Visual Mock)
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={loading}
+              className="w-full mt-2 font-semibold"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Verifying Faculty Access...
+                </>
+              ) : (
+                'Sign In to Mentor Workspace'
+              )}
             </Button>
           </form>
 
-          <div className="pt-2">
-            <DemoNotice
-              variant="inline"
-              message="Stage 1 frontend preview. In Stage 2, Supabase Auth will enforce role-based access for faculty mentors."
-            />
-          </div>
+          {isConfigured && (
+            <div className="pt-1">
+              <DemoNotice
+                variant="inline"
+                message="Connected to Supabase PostgreSQL. Authenticated faculty accounts gain administrative privileges verified through server-side RLS."
+              />
+            </div>
+          )}
 
           <div className="pt-2 text-center text-xs text-slate-500">
             <span>Student mentee? </span>
@@ -171,7 +223,7 @@ export const AdminLogin: React.FC = () => {
         </div>
       </div>
 
-      {/* Forgot Password Visual Dialog */}
+      {/* Forgot Password Dialog */}
       <Dialog
         isOpen={isForgotOpen}
         onClose={() => {
@@ -179,16 +231,16 @@ export const AdminLogin: React.FC = () => {
           setForgotSent(false)
         }}
         title="Faculty Password Recovery"
-        description="Visual preview of administrative password recovery."
+        description="Receive an institutional password recovery email."
       >
         {forgotSent ? (
           <div className="text-center py-4 space-y-3">
             <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
               <ShieldCheck className="h-6 w-6" />
             </div>
-            <h4 className="font-bold text-slate-900 text-base">Recovery Dispatch Queued</h4>
+            <h4 className="font-bold text-slate-900 text-base">Recovery Link Sent</h4>
             <p className="text-xs text-slate-600">
-              In production, an institutional password reset token will be issued to <strong>{forgotEmail}</strong>.
+              A password reset link has been dispatched to <strong>{forgotEmail}</strong>.
             </p>
             <Button
               type="button"
@@ -200,7 +252,7 @@ export const AdminLogin: React.FC = () => {
               }}
               className="mt-2"
             >
-              Close Preview
+              Close
             </Button>
           </div>
         ) : (
@@ -221,8 +273,8 @@ export const AdminLogin: React.FC = () => {
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" size="sm">
-                Send Reset Link
+              <Button type="submit" variant="primary" size="sm" disabled={forgotLoading}>
+                {forgotLoading ? 'Sending...' : 'Send Reset Link'}
               </Button>
             </div>
           </form>

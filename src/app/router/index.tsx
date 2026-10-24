@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { LandingPage } from '@/features/landing/LandingPage'
 import { StudentLogin } from '@/features/authentication/StudentLogin'
 import { AdminLogin } from '@/features/authentication/AdminLogin'
+import { ProtectedRoute } from '@/app/router/ProtectedRoute'
 
 // Student layout & screens
 import { StudentLayout } from '@/app/layouts/StudentLayout'
@@ -51,7 +52,11 @@ export const router = createBrowserRouter([
   // Student Mobile-first PWA Route Group
   {
     path: '/student',
-    element: <StudentLayout />,
+    element: (
+      <ProtectedRoute allowedRoles={['student', 'admin']}>
+        <StudentLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -99,7 +104,11 @@ export const router = createBrowserRouter([
   // Administrator Desktop-optimized Route Group
   {
     path: '/admin',
-    element: <AdminLayout />,
+    element: (
+      <ProtectedRoute allowedRoles={['admin']}>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,

@@ -3,30 +3,129 @@ import { Link } from 'react-router-dom'
 import {
   Users,
   Search,
-  Filter,
   ArrowRight,
   Compass,
-  Sparkles,
-  Download,
+  Upload,
+  FileSpreadsheet,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  X
 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
+import { Dialog } from '@/components/ui/dialog'
 import { DemoNotice } from '@/components/shared/DemoNotice'
 import { MOCK_STUDENTS, MOCK_ATTENDANCE } from '@/data/mock'
+import { studentService } from '@/services/studentService'
+import { importService, type ValidatedStudentRow, type ImportRowError, type ImportResult } from '@/services/importService'
+import { useAuth } from '@/app/providers/AuthContext'
 
 export const StudentList: React.FC = () => {
+  const { isConfigured } = useAuth()
   const [search, setSearch] = React.useState('')
   const [statusFilter, setStatusFilter] = React.useState<string>('All')
+  const [dbStudents, setDbStudents] = React.useState<any[]>([])
 
-  const filteredStudents = MOCK_STUDENTS.filter((s) => {
+  // Bulk Import Modal State
+  const [isImportOpen, setIsImportOpen] = React.useState(false)
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
+  const [isParsing, setIsParsing] = React.useState(false)
+  const [parsedRows, setParsedRows] = React.useState<ValidatedStudentRow[]>([])
+  const [parseErrors, setParseErrors] = React.useState<ImportRowError[]>([])
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [importResult, setImportResult] = React.useState<ImportResult | null>(null)
+
+  React.useEffect(() => {
+    if (isConfigured) {
+      studentService.getAllStudents().then((data) => {
+        if (data && data.length > 0) {
+          setDbStudents(data)
+        }
+      })
+    }
+  }, [isConfigured])
+
+  // Combine mock students with real db students if available
+  const allStudentProfiles = React.useMemo(() => {
+    if (dbStudents.length === 0) return MOCK_STUDENTS
+
+    // Map db students into StudentProfile shape
+    return dbStudents.map((db) => {
+      const matched = MOCK_STUDENTS.find(s => s.rollNumber.toLowerCase() === db.roll_number.toLowerCase())
+      if (matched) {
+        return {
+          ...matched,
+          fullName: db.name,
+          email: db.email,
+          profileStatus: db.status === 'Active' ? 'Approved' : db.status,
+          avatarUrl: db.avatar_url || matched.avatarUrl
+        }
+      }
+      return {
+        ...MOCK_STUDENTS[0],
+        fullName: db.name,
+        rollNumber: db.roll_number,
+        email: db.email,
+        department: db.department || 'CSE-Data Science',
+        year: db.year || 2,
+        section: db.section || 'A',
+        profileStatus: 'Approved',
+        avatarUrl: db.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'
+      }
+    })
+  }, [dbStudents])
+
+  const filteredStudents = allStudentProfiles.filter((s) => {
     const matchesSearch =
       s.fullName.toLowerCase().includes(search.toLowerCase()) ||
       s.rollNumber.toLowerCase().includes(search.toLowerCase())
     if (statusFilter === 'All') return matchesSearch
     return matchesSearch && s.profileStatus === statusFilter
   })
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setSelectedFile(file)
+    setIsParsing(true)
+    setImportResult(null)
+
+    try {
+      const { validRows, errors } = await importService.parseCSV(file)
+      setParsedRows(validRows)
+      setParseErrors(errors)
+    } finally {
+      setIsParsing(false)
+    }
+  }
+
+  const handleExecuteImport = async () => {
+    if (parsedRows.length === 0) return
+    setIsSubmitting(true)
+
+    try {
+      const result = await importService.bulkImportStudents(parsedRows)
+      setImportResult(result)
+      // Refresh students
+      studentService.getAllStudents().then((data) => {
+        if (data && data.length > 0) setDbStudents(data)
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const resetImport = () => {
+    setSelectedFile(null)
+    setParsedRows([])
+    setParseErrors([])
+    setImportResult(null)
+    setIsImportOpen(false)
+  }
 
   return (
     <div className="space-y-6 pb-12">
@@ -37,11 +136,20 @@ export const StudentList: React.FC = () => {
             Student Mentee Management
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Cohort of 38 second-year students in CSE-Data Science.
+            Cohort of 35–40 second-year students in CSE-Data Science.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsImportOpen(true)}
+            className="text-xs font-bold border-purple-200 text-purple-800 hover:bg-purple-50"
+          >
+            <Upload className="h-3.5 w-3.5 mr-1 text-purple-700" />
+            Bulk CSV Onboarding
+          </Button>
           <Link to="/admin/mentor360">
             <Button variant="pastel-lavender" size="sm" className="text-xs font-bold">
               <Compass className="h-3.5 w-3.5 mr-1 text-purple-700" />
@@ -53,7 +161,7 @@ export const StudentList: React.FC = () => {
 
       <DemoNotice
         variant="inline"
-        message="7 representative student records covering approved, pending, changes requested, backlogs, and attendance warnings."
+        message={isConfigured ? "Connected to Supabase PostgreSQL. Displaying verified cohort records with CSV onboarding support." : "Development mode: Displaying representative cohort records covering approved, pending, and changes requested."}
       />
 
       {/* Filter and Search Bar */}
@@ -76,7 +184,7 @@ export const StudentList: React.FC = () => {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="h-9 px-3 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none"
           >
-            <option value="All">All Statuses ({MOCK_STUDENTS.length})</option>
+            <option value="All">All Statuses ({allStudentProfiles.length})</option>
             <option value="Approved">Approved</option>
             <option value="Pending Approval">Pending Approval</option>
             <option value="Changes Requested">Changes Requested</option>
@@ -150,6 +258,120 @@ export const StudentList: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Bulk CSV Import Modal */}
+      <Dialog
+        isOpen={isImportOpen}
+        onClose={resetImport}
+        title="Bulk Student Onboarding via CSV"
+        description="Upload a CSV roster of CSE-Data Science students to provision initial cohort profiles."
+      >
+        <div className="space-y-4 pt-2">
+          {!importResult ? (
+            <>
+              <div className="border-2 border-dashed border-purple-200 rounded-2xl p-6 text-center hover:bg-purple-50/50 transition-colors">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="csv-file-input"
+                />
+                <label htmlFor="csv-file-input" className="cursor-pointer flex flex-col items-center">
+                  <FileSpreadsheet className="h-10 w-10 text-purple-600 mb-2" />
+                  <span className="text-xs font-bold text-slate-800">
+                    {selectedFile ? selectedFile.name : 'Select or drop CSV file'}
+                  </span>
+                  <span className="text-[11px] text-slate-500 mt-1">
+                    Required headers: roll_number, name, email
+                  </span>
+                </label>
+              </div>
+
+              {isParsing && (
+                <div className="flex items-center justify-center gap-2 text-xs text-purple-700">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Validating CSV structure...</span>
+                </div>
+              )}
+
+              {parsedRows.length > 0 && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-800">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span className="font-semibold">{parsedRows.length} valid student rows detected</span>
+                  </div>
+                </div>
+              )}
+
+              {parseErrors.length > 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1.5 text-xs text-amber-900 max-h-40 overflow-y-auto">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{parseErrors.length} issues identified:</span>
+                  </div>
+                  {parseErrors.slice(0, 5).map((err, i) => (
+                    <div key={i} className="text-[11px] pl-5 text-amber-700">
+                      Row {err.row}: {err.message}
+                    </div>
+                  ))}
+                  {parseErrors.length > 5 && (
+                    <div className="text-[10px] pl-5 text-slate-500">
+                      ...and {parseErrors.length - 5} more
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <Button type="button" variant="ghost" size="sm" onClick={resetImport}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  disabled={parsedRows.length === 0 || isSubmitting}
+                  onClick={handleExecuteImport}
+                  className="bg-purple-700 hover:bg-purple-800"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                      Provisioning Accounts...
+                    </>
+                  ) : (
+                    `Import ${parsedRows.length} Students`
+                  )}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="py-4 text-center space-y-3">
+              <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <h4 className="font-bold text-slate-900 text-base">Onboarding Complete</h4>
+              <p className="text-xs text-slate-600">
+                Successfully inserted <strong>{importResult.insertedCount}</strong> student profiles into Supabase.
+              </p>
+              {importResult.errors.length > 0 && (
+                <div className="text-left text-xs bg-amber-50 p-3 rounded-xl border border-amber-200">
+                  <p className="font-semibold text-amber-800 mb-1">Skipped duplicates/errors:</p>
+                  {importResult.errors.map((e, idx) => (
+                    <p key={idx} className="text-[11px] text-amber-700">
+                      {e.rollNumber ? `[${e.rollNumber}] ` : ''}{e.message}
+                    </p>
+                  ))}
+                </div>
+              )}
+              <Button type="button" variant="primary" size="sm" onClick={resetImport} className="mt-2">
+                Done
+              </Button>
+            </div>
+          )}
+        </div>
+      </Dialog>
     </div>
   )
 }

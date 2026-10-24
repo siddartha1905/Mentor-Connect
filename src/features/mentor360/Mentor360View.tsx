@@ -23,20 +23,61 @@ import {
   MOCK_CHAT_MESSAGES,
 } from '@/data/mock'
 import type { StudentProfile } from '@/types'
+import { studentService, type StudentFullDetails } from '@/services/studentService'
+import { useAuth } from '@/app/providers/AuthContext'
 
 export const Mentor360View: React.FC = () => {
+  const { isConfigured } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedRoll = searchParams.get('roll') || '23L31A5401'
   
   const [activeTab, setActiveTab] = React.useState('overview')
+  const [dbDetails, setDbDetails] = React.useState<StudentFullDetails | null>(null)
 
   // Confidential Mentor Notes local state for interactive demo editing
   const [newConfidentialNote, setNewConfidentialNote] = React.useState('')
   const [newStudentSuggestion, setNewStudentSuggestion] = React.useState('')
   const [noteStaged, setNoteStaged] = React.useState(false)
 
-  const student: StudentProfile =
-    MOCK_STUDENTS.find((s) => s.rollNumber === selectedRoll) || MOCK_STUDENTS[0]
+  React.useEffect(() => {
+    if (isConfigured) {
+      studentService.getStudentByRoll(selectedRoll).then(setDbDetails)
+    }
+  }, [isConfigured, selectedRoll])
+
+  const fallbackStudent: StudentProfile =
+    MOCK_STUDENTS.find((s) => s.rollNumber.toLowerCase() === selectedRoll.toLowerCase()) || MOCK_STUDENTS[0]
+
+  const student: StudentProfile = React.useMemo(() => {
+    if (!dbDetails?.student) return fallbackStudent
+
+    const dbS = dbDetails.student
+    const dbP = dbDetails.personal
+    const dbF = dbDetails.family
+
+    return {
+      ...fallbackStudent,
+      fullName: dbS.name || fallbackStudent.fullName,
+      rollNumber: dbS.roll_number || fallbackStudent.rollNumber,
+      department: dbS.department || fallbackStudent.department,
+      year: dbS.year || fallbackStudent.year,
+      section: dbS.section || fallbackStudent.section,
+      avatarUrl: dbS.avatar_url || fallbackStudent.avatarUrl,
+      email: dbS.email || fallbackStudent.email,
+      phone: dbP?.phone || fallbackStudent.phone,
+      dob: dbP?.dob || fallbackStudent.dob,
+      presentAddress: dbP?.current_address || fallbackStudent.presentAddress,
+      permanentAddress: dbP?.permanent_address || fallbackStudent.permanentAddress,
+      emergencyContact: dbP?.emergency_contact || fallbackStudent.emergencyContact,
+      fatherName: dbF?.father_name || fallbackStudent.fatherName,
+      fatherOccupation: dbF?.father_occupation || fallbackStudent.fatherOccupation,
+      fatherPhone: dbF?.father_phone || fallbackStudent.fatherPhone,
+      motherName: dbF?.mother_name || fallbackStudent.motherName,
+      motherOccupation: dbF?.mother_occupation || fallbackStudent.motherOccupation,
+      motherPhone: dbF?.mother_phone || fallbackStudent.motherPhone,
+    }
+  }, [dbDetails, fallbackStudent])
+
   const attendance = MOCK_ATTENDANCE[student.rollNumber] || MOCK_ATTENDANCE['23L31A5401']
   const session =
     MOCK_SESSIONS.find((sess) => sess.studentRollNumber === student.rollNumber) || MOCK_SESSIONS[0]

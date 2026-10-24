@@ -4,42 +4,121 @@ import {
   Check,
   X,
   RotateCcw,
-  Clock,
   Sparkles,
-  ArrowRight,
-  ShieldCheck,
-  AlertCircle,
-  History,
+  Loader2,
+  MessageSquare
 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
 import { DemoNotice } from '@/components/shared/DemoNotice'
 import { INITIAL_APPROVALS } from '@/data/mock'
 import type { ApprovalItem } from '@/types'
+import { approvalService, type SubmissionWithStudent } from '@/services/approvalService'
+import { useAuth } from '@/app/providers/AuthContext'
 
 export const ApprovalCentre: React.FC = () => {
+  const { isConfigured } = useAuth()
   const [approvals, setApprovals] = React.useState<ApprovalItem[]>(INITIAL_APPROVALS)
+  const [dbSubmissions, setDbSubmissions] = React.useState<SubmissionWithStudent[]>([])
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null)
   const [activeFilter, setActiveFilter] = React.useState<'All' | 'Pending' | 'Approved' | 'Changes Requested'>('All')
+  const [loading, setLoading] = React.useState<boolean>(false)
 
-  const handleUpdateStatus = (
-    id: string,
-    newStatus: 'Approved' | 'Changes Requested' | 'Rejected'
-  ) => {
-    setApprovals((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
-    )
-    setStatusMessage(
-      `Demo Staged: Submission ${id} marked as "${newStatus}" in local memory. Backend database write will be enabled in Stage 2.`
-    )
-    setTimeout(() => setStatusMessage(null), 5000)
+  // Remarks modal
+  const [reviewDialog, setReviewDialog] = React.useState<{
+    isOpen: boolean
+    submissionId: string
+    action: 'approve' | 'request_corrections' | 'reject'
+    studentName: string
+    remarks: string
+  }>({
+    isOpen: false,
+    submissionId: '',
+    action: 'approve',
+    studentName: '',
+    remarks: ''
+  })
+  const [submittingAction, setSubmittingAction] = React.useState(false)
+
+  const loadSubmissions = React.useCallback(async () => {
+    if (!isConfigured) return
+    setLoading(true)
+    try {
+      const data = await approvalService.getAllSubmissions(activeFilter === 'Changes Requested' ? 'Corrections_Requested' : activeFilter)
+      setDbSubmissions(data)
+    } finally {
+      setLoading(false)
+    }
+  }, [isConfigured, activeFilter])
+
+  React.useEffect(() => {
+    loadSubmissions()
+  }, [loadSubmissions])
+
+  const openReviewModal = (submissionId: string, action: 'approve' | 'request_corrections' | 'reject', studentName: string) => {
+    setReviewDialog({
+      isOpen: true,
+      submissionId,
+      action,
+      studentName,
+      remarks: action === 'approve' ? 'Verified against documentary records.' : ''
+    })
   }
 
-  const filteredApprovals = approvals.filter((item) => {
-    if (activeFilter === 'All') return true
-    return item.status === activeFilter
-  })
+  const handleConfirmReview = async () => {
+    const { submissionId, action, remarks } = reviewDialog
+    setSubmittingAction(true)
+
+    try {
+      if (isConfigured) {
+        const res = await approvalService.reviewSubmission(submissionId, action, remarks)
+        if (res.success) {
+          setStatusMessage(`Transaction Committed: Submission successfully marked as "${action}" in PostgreSQL.`)
+          await loadSubmissions()
+        } else {
+          setStatusMessage(`RPC Error: ${(res.error as any)?.message || 'Failed to update submission'}`)
+        }
+      } else {
+        // Fallback demo state update
+        const mappedStatus = action === 'approve' ? 'Approved' : action === 'request_corrections' ? 'Changes Requested' : 'Rejected'
+        setApprovals((prev) =>
+          prev.map((item) => (item.id === submissionId ? { ...item, status: mappedStatus, adminComments: remarks } : item))
+        )
+        setStatusMessage(`Demo updated in browser memory for submission ${submissionId}`)
+      }
+    } finally {
+      setSubmittingAction(false)
+      setReviewDialog(prev => ({ ...prev, isOpen: false }))
+      setTimeout(() => setStatusMessage(null), 6000)
+    }
+  }
+
+  // Active items to display: combine dbSubmissions (if configured) or mock
+  const displayItems: ApprovalItem[] = React.useMemo(() => {
+    if (isConfigured && dbSubmissions.length > 0) {
+      return dbSubmissions.map(sub => {
+        const student = sub.student
+        return {
+          id: sub.id,
+          studentName: student?.name || 'CSE-DS Student',
+          studentRollNumber: student?.roll_number || '23L31A54XX',
+          sectionName: sub.section.toUpperCase(),
+          submissionDate: new Date(sub.created_at).toLocaleDateString(),
+          status: (sub.status === 'Corrections_Requested' ? 'Changes Requested' : sub.status) as any,
+          oldValues: sub.current_snapshot || { Status: 'Original records' },
+          proposedValues: sub.proposed_changes || {},
+          adminComments: sub.mentor_remarks || undefined
+        }
+      })
+    }
+
+    return approvals.filter((item) => {
+      if (activeFilter === 'All') return true
+      return item.status === activeFilter
+    })
+  }, [isConfigured, dbSubmissions, approvals, activeFilter])
 
   return (
     <div className="space-y-6 pb-12">
@@ -73,7 +152,7 @@ export const ApprovalCentre: React.FC = () => {
 
       <DemoNotice
         variant="inline"
-        message="Demo mode only. Approval actions update component state in browser memory without database persistence."
+        message={isConfigured ? "Connected to Supabase. Faculty approvals execute atomic database RPC transaction (review_profile_submission)." : "Demo mode only. Approval actions update component state in browser memory."}
       />
 
       {statusMessage && (
@@ -83,9 +162,22 @@ export const ApprovalCentre: React.FC = () => {
         </div>
       )}
 
+      {loading && (
+        <div className="flex items-center justify-center p-8 gap-2 text-xs text-purple-700">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Loading verified submission queue from PostgreSQL...</span>
+        </div>
+      )}
+
       {/* Approvals List */}
       <div className="space-y-4">
-        {filteredApprovals.map((item) => (
+        {displayItems.length === 0 && !loading && (
+          <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+            No submissions found under the "{activeFilter}" filter.
+          </div>
+        )}
+
+        {displayItems.map((item) => (
           <Card key={item.id} className="p-5 border-slate-200/90 space-y-4">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
@@ -123,13 +215,13 @@ export const ApprovalCentre: React.FC = () => {
               {/* Old Values */}
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
                 <span className="font-bold text-slate-500 uppercase text-[10px] tracking-wider block">
-                  Previously Approved Values
+                  Previously Approved Snapshot
                 </span>
                 <div className="space-y-1.5">
                   {Object.entries(item.oldValues).map(([key, val]) => (
                     <div key={key} className="flex justify-between border-b border-slate-200/60 pb-1">
                       <span className="text-slate-500">{key}:</span>
-                      <span className="font-medium text-slate-800 text-right">{val}</span>
+                      <span className="font-medium text-slate-800 text-right">{String(val)}</span>
                     </div>
                   ))}
                 </div>
@@ -144,7 +236,7 @@ export const ApprovalCentre: React.FC = () => {
                   {Object.entries(item.proposedValues).map(([key, val]) => (
                     <div key={key} className="flex justify-between border-b border-purple-200/60 pb-1">
                       <span className="text-purple-700 font-semibold">{key}:</span>
-                      <span className="font-bold text-purple-950 text-right">{val}</span>
+                      <span className="font-bold text-purple-950 text-right">{String(val)}</span>
                     </div>
                   ))}
                 </div>
@@ -164,18 +256,18 @@ export const ApprovalCentre: React.FC = () => {
               <Button
                 variant="pastel-mint"
                 size="sm"
-                onClick={() => handleUpdateStatus(item.id, 'Approved')}
+                onClick={() => openReviewModal(item.id, 'approve', item.studentName)}
                 disabled={item.status === 'Approved'}
                 className="text-xs"
               >
                 <Check className="h-3.5 w-3.5 mr-1 text-emerald-700" />
-                Approve (Demo)
+                Approve Changes
               </Button>
 
               <Button
                 variant="pastel-lavender"
                 size="sm"
-                onClick={() => handleUpdateStatus(item.id, 'Changes Requested')}
+                onClick={() => openReviewModal(item.id, 'request_corrections', item.studentName)}
                 disabled={item.status === 'Changes Requested'}
                 className="text-xs"
               >
@@ -186,7 +278,7 @@ export const ApprovalCentre: React.FC = () => {
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => handleUpdateStatus(item.id, 'Rejected')}
+                onClick={() => openReviewModal(item.id, 'reject', item.studentName)}
                 disabled={item.status === 'Rejected'}
                 className="text-xs"
               >
@@ -197,6 +289,63 @@ export const ApprovalCentre: React.FC = () => {
           </Card>
         ))}
       </div>
+
+      {/* Review Dialog */}
+      <Dialog
+        isOpen={reviewDialog.isOpen}
+        onClose={() => setReviewDialog(prev => ({ ...prev, isOpen: false }))}
+        title={
+          reviewDialog.action === 'approve'
+            ? `Approve Profile Submission — ${reviewDialog.studentName}`
+            : reviewDialog.action === 'request_corrections'
+            ? `Request Corrections — ${reviewDialog.studentName}`
+            : `Reject Submission — ${reviewDialog.studentName}`
+        }
+        description="This action executes a single transactional RPC in Supabase PostgreSQL."
+      >
+        <div className="space-y-4 pt-2">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <MessageSquare className="h-3.5 w-3.5 text-purple-700" />
+              <span>Mentor Remarks / Verification Note</span>
+            </label>
+            <textarea
+              rows={3}
+              value={reviewDialog.remarks}
+              onChange={(e) => setReviewDialog(prev => ({ ...prev, remarks: e.target.value }))}
+              placeholder="e.g. Verified against submitted address proof certificate..."
+              className="w-full text-xs p-3 rounded-xl border border-slate-200 outline-none focus:border-purple-500"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setReviewDialog(prev => ({ ...prev, isOpen: false }))}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant={reviewDialog.action === 'approve' ? 'pastel-mint' : reviewDialog.action === 'reject' ? 'destructive' : 'primary'}
+              size="sm"
+              disabled={submittingAction}
+              onClick={handleConfirmReview}
+            >
+              {submittingAction ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                  Updating...
+                </>
+              ) : (
+                `Confirm ${reviewDialog.action.replace('_', ' ')}`
+              )}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   )
 }
