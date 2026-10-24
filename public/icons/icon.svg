@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="mc-grad" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="50%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#0D9488" />
+    </linearGradient>
+    <linearGradient id="accent-grad" x1="16" y1="16" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#EDE9FE" />
+      <stop offset="100%" stop-color="#DBEAFE" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#mc-grad)" />
+  <!-- Connected Path: Student node, Mentor node, and guiding bridge -->
+  <circle cx="23" cy="38" r="7" fill="#FFFFFF" fill-opacity="0.9" />
+  <circle cx="41" cy="24" r="8.5" fill="#FFFFFF" />
+  <!-- Dynamic link path -->
+  <path d="M25 33 C 25 24, 38 34, 39 26" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" fill="none" />
+  <!-- Upward growth arrow tip / beacon spark -->
+  <path d="M41 15 L43 21 L49 23 L43 25 L41 31 L39 25 L33 23 L39 21 Z" fill="#FBBF24" opacity="0.95" />
+</svg>
