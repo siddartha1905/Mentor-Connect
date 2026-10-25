@@ -1,11 +1,72 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 
+export interface StudentRecord {
+  id: string
+  user_id?: string | null
+  roll_number: string
+  name: string
+  email: string
+  department: string
+  year: number
+  semester: number
+  section: string
+  avatar_url?: string | null
+  share_phone_in_directory?: boolean
+  share_email_in_directory?: boolean
+  status?: string
+}
+
+export interface StudentPersonalRecord {
+  id?: string
+  student_id?: string
+  dob?: string | null
+  gender?: string | null
+  blood_group?: string | null
+  phone?: string | null
+  emergency_contact?: string | null
+  current_address?: string | null
+  permanent_address?: string | null
+  residence_type?: string | null
+  transport_mode?: string | null
+  bus_route_details?: string | null
+}
+
+export interface StudentFamilyRecord {
+  id?: string
+  student_id?: string
+  father_name?: string | null
+  father_occupation?: string | null
+  father_phone?: string | null
+  mother_name?: string | null
+  mother_occupation?: string | null
+  mother_phone?: string | null
+  guardian_name?: string | null
+  guardian_phone?: string | null
+  annual_income?: number | null
+}
+
+export interface StudentEducationRecord {
+  id?: string
+  student_id?: string
+  tenth_board?: string | null
+  tenth_school?: string | null
+  tenth_percentage?: number | null
+  twelfth_board?: string | null
+  twelfth_college?: string | null
+  twelfth_percentage?: number | null
+  eamcet_rank?: number | null
+  entry_type?: string | null
+  diploma_college?: string | null
+  diploma_percentage?: number | null
+  diploma_branch?: string | null
+}
+
 export interface StudentFullDetails {
-  student: any
-  personal: any
-  family: any
-  education: any
-  marks: any[]
+  student: StudentRecord | null
+  personal: StudentPersonalRecord | null
+  family: StudentFamilyRecord | null
+  education: StudentEducationRecord | null
+  marks: Array<Record<string, unknown>>
 }
 
 export const studentService = {

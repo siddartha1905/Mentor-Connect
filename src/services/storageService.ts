@@ -105,8 +105,8 @@ export const storageService = {
       }
 
       return { url: signedData.signedUrl, error: null }
-    } catch (err: any) {
-      return { url: null, error: err }
+    } catch (err: unknown) {
+      return { url: null, error: err instanceof Error ? err : new Error(String(err)) }
     }
   }
 }

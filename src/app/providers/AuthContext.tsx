@@ -199,8 +199,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       return { error: null }
-    } catch (err: any) {
-      return { error: err }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err : new Error(String(err)) }
     }
   }
 
@@ -227,8 +227,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         redirectTo: `${window.location.origin}/login/reset-password`,
       })
       return { error }
-    } catch (err: any) {
-      return { error: err }
+    } catch (err: unknown) {
+      return { error: err instanceof Error ? err : new Error(String(err)) }
     }
   }
 

@@ -38,11 +38,11 @@ export const StudentLogin: React.FC = () => {
       if (res.error) {
         setErrorMessage(res.error.message || 'Invalid email or password. Please try again.')
       } else {
-        const from = (location.state as any)?.from?.pathname || '/student'
+        const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/student'
         navigate(from, { replace: true })
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'An unexpected error occurred.')
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'An unexpected error occurred.')
     } finally {
       setLoading(false)
     }

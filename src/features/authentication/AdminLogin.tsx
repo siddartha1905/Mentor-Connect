@@ -38,11 +38,11 @@ export const AdminLogin: React.FC = () => {
       if (res.error) {
         setErrorMessage(res.error.message || 'Invalid credentials. Please verify your faculty email and password.')
       } else {
-        const from = (location.state as any)?.from?.pathname || '/admin'
+        const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/admin'
         navigate(from, { replace: true })
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || 'An unexpected error occurred.')
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'An unexpected error occurred.')
     } finally {
       setLoading(false)
     }

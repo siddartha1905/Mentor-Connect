@@ -137,15 +137,15 @@ export const StudentProfileView: React.FC = () => {
         setPhotoModalOpen(false)
         setTimeout(() => setFeedbackNotice(null), 4000)
       }
-    } catch (err: any) {
-      setPhotoError(err.message || 'Error processing photograph')
+    } catch (err: unknown) {
+      setPhotoError(err instanceof Error ? err.message : 'Error processing photograph')
     } finally {
       setUploadingPhoto(false)
     }
   }
 
   // Open edit request modal
-  const openEditModal = (section: 'personal' | 'family' | 'education', title: string, initialData: Record<string, any>) => {
+  const openEditModal = (section: 'personal' | 'family' | 'education', title: string, initialData: Record<string, unknown>) => {
     setEditModal({
       isOpen: true,
       section,

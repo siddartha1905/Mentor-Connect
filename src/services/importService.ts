@@ -46,27 +46,27 @@ export const importService = {
           const validRows: ValidatedStudentRow[] = []
           const errors: ImportRowError[] = []
           const seenRolls = new Set<string>()
-          const seenEmails = new Set<string>()
+          const seenEmails = new Set<string>();
 
-          results.data.forEach((rawRow: any, index: number) => {
+          (results.data as Array<Record<string, unknown>>).forEach((rawRow: Record<string, unknown>, index: number) => {
             const rowNumber = index + 2 // +2 accounts for 1-based index and CSV header row
 
             // Pre-process fields
             const normalized = {
-              roll_number: rawRow.roll_number || rawRow.roll_no || rawRow.rollno || '',
-              name: rawRow.name || rawRow.student_name || rawRow.full_name || '',
-              email: rawRow.email || rawRow.student_email || '',
-              department: rawRow.department || rawRow.branch || 'CSE-Data Science',
-              year: rawRow.year || 2,
-              section: rawRow.section || 'A',
-              phone: rawRow.phone || rawRow.mobile || '',
-              father_name: rawRow.father_name || rawRow.parent_name || '',
-              father_phone: rawRow.father_phone || ''
+              roll_number: String(rawRow.roll_number || rawRow.roll_no || rawRow.rollno || ''),
+              name: String(rawRow.name || rawRow.student_name || rawRow.full_name || ''),
+              email: String(rawRow.email || rawRow.student_email || ''),
+              department: String(rawRow.department || rawRow.branch || 'CSE-Data Science'),
+              year: Number(rawRow.year) || 2,
+              section: String(rawRow.section || 'A'),
+              phone: String(rawRow.phone || rawRow.mobile || ''),
+              father_name: String(rawRow.father_name || rawRow.parent_name || ''),
+              father_phone: String(rawRow.father_phone || '')
             }
 
             const parseResult = StudentRowSchema.safeParse(normalized)
             if (!parseResult.success) {
-              const msg = parseResult.error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+              const msg = parseResult.error.issues.map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`).join(', ')
               errors.push({
                 row: rowNumber,
                 rollNumber: normalized.roll_number,
@@ -104,7 +104,7 @@ export const importService = {
 
           resolve({ validRows, errors })
         },
-        error: (err: any) => {
+        error: (err: Error) => {
           resolve({
             validRows: [],
             errors: [{ row: 1, message: `CSV Parsing error: ${err.message}` }]
@@ -143,8 +143,8 @@ export const importService = {
       console.warn('Could not check existing records in bulk:', fetchError)
     }
 
-    const existingRolls = new Set((existingStudents || []).map((s: any) => s.roll_number.toUpperCase()))
-    const existingEmails = new Set((existingStudents || []).map((s: any) => s.email.toLowerCase()))
+    const existingRolls = new Set((existingStudents || []).map((s: { roll_number: string; email: string }) => s.roll_number.toUpperCase()))
+    const existingEmails = new Set((existingStudents || []).map((s: { roll_number: string; email: string }) => s.email.toLowerCase()))
 
     const toInsert: ValidatedStudentRow[] = []
 
