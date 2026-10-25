@@ -8,7 +8,7 @@ Stage 2 connects **Mentor Connect** with a Supabase PostgreSQL backend, establis
 ## 1. Database Schema & Migration (Option A)
 
 The database schema is organized under:
-- `supabase/migrations/20261025_stage2_complete_schema.sql`: Core schema, indexes, helper functions, triggers, transactional RPCs, and RLS policies.
+- `supabase/migrations/20261025000000_stage2_consolidated_master.sql`: Authoritative master schema containing core tables, reconciled academic/diploma/commute fields, RLS security policies, deadline triggers, storage policies, and duplicate-claim-protected onboarding triggers. (Superseded drafts archived in `supabase/migrations/archive/`).
 - `supabase/seed.sql`: 7 fictional CSE-Data Science 2nd-year student profiles with academic marks, personal records, and test approval queue submissions.
 
 ### Table Schema Summary:

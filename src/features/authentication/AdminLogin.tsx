@@ -11,7 +11,7 @@ import { useAuth } from '@/app/providers/AuthContext'
 export const AdminLogin: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { signInWithPassword, resetPasswordForEmail, loginAsDemo, isConfigured } = useAuth()
+  const { signInWithPassword, resetPasswordForEmail, loginAsDemo, isConfigured, isDemoAllowed } = useAuth()
 
   const [email, setEmail] = React.useState('')
   const [password, setPassword] = React.useState('')
@@ -49,6 +49,7 @@ export const AdminLogin: React.FC = () => {
   }
 
   const handleDemoLogin = () => {
+    if (!isDemoAllowed) return
     loginAsDemo('admin')
     navigate('/admin', { replace: true })
   }
@@ -92,37 +93,41 @@ export const AdminLogin: React.FC = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-6 shadow-xl shadow-slate-200/60 rounded-3xl border border-slate-200/80 sm:px-10 space-y-6">
-          {/* Direct Development Preview CTA */}
-          <div className="p-4 rounded-2xl bg-purple-50/90 border border-purple-200 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-purple-950">
-              <Sparkles className="h-4 w-4 text-purple-700" />
-              <span>Interactive Faculty Preview</span>
-            </div>
-            <p className="text-xs text-purple-800 leading-relaxed">
-              Experience the desktop faculty dashboard, Mentor 360°, student list, and approval centre immediately:
-            </p>
-            <Button
-              type="button"
-              variant="primary"
-              onClick={handleDemoLogin}
-              className="w-full bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs py-2.5 shadow-md shadow-purple-200"
-            >
-              <Shield className="h-4 w-4 mr-1.5" />
-              Explore Admin Demo
-              <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-            </Button>
-          </div>
+          {/* Direct Development Preview CTA (Visible in Development/Staging only) */}
+          {isDemoAllowed && (
+            <>
+              <div className="p-4 rounded-2xl bg-purple-50/90 border border-purple-200 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-purple-950">
+                  <Sparkles className="h-4 w-4 text-purple-700" />
+                  <span>Interactive Faculty Preview</span>
+                </div>
+                <p className="text-xs text-purple-800 leading-relaxed">
+                  Experience the desktop faculty dashboard, Mentor 360°, student list, and approval centre immediately:
+                </p>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleDemoLogin}
+                  className="w-full bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs py-2.5 shadow-md shadow-purple-200"
+                >
+                  <Shield className="h-4 w-4 mr-1.5" />
+                  Explore Admin Demo
+                  <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                </Button>
+              </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-3 text-slate-400 font-semibold tracking-wider">
-                Or Sign In With Supabase
-              </span>
-            </div>
-          </div>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-3 text-slate-400 font-semibold tracking-wider">
+                    Or Sign In With Supabase
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleFormSubmit} className="space-y-4">
             {errorMessage && (

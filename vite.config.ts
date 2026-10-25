@@ -40,9 +40,16 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
-        // Exclude sensitive dynamic data from any offline cache
-        navigateFallbackDenylist: [/^\/api\//],
+        // Precache app shell and static core assets only; lazy chunks load on-demand
+        globPatterns: ['**/*.{html,css,ico,png,svg,webp}', 'assets/index-*.js'],
+        navigateFallbackDenylist: [/^\/api\//, /^https:\/\/.*\.supabase\.co\//],
+        runtimeCaching: [
+          {
+            // Zero caching of private Supabase database or storage network requests
+            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            handler: 'NetworkOnly',
+          },
+        ],
       },
     }),
   ],

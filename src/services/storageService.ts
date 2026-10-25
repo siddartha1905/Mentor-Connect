@@ -98,11 +98,10 @@ export const storageService = {
         .createSignedUrl(data.path, 31536000)
 
       if (signedError || !signedData?.signedUrl) {
-        // Fallback to getPublicUrl
-        const { data: pubData } = supabase.storage
-          .from('profile-photos')
-          .getPublicUrl(data.path)
-        return { url: pubData.publicUrl, error: null }
+        return { 
+          url: null, 
+          error: signedError || new Error('Could not generate private signed URL for photograph.') 
+        }
       }
 
       return { url: signedData.signedUrl, error: null }

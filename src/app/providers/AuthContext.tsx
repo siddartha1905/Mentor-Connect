@@ -15,6 +15,7 @@ interface AuthContextType {
   studentRollNumber: string | null
   loading: boolean
   isConfigured: boolean
+  isDemoAllowed: boolean
   signInWithPassword: (email: string, password: string) => Promise<{ error: Error | null; role?: UserRole }>
   signOut: () => Promise<void>
   resetPasswordForEmail: (email: string) => Promise<{ error: Error | null }>
@@ -106,13 +107,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
+  const isProduction = import.meta.env.PROD || import.meta.env.VITE_APP_ENV === 'production'
+
   useEffect(() => {
-    // Check if demo user was saved in localStorage
-    const savedDemoRole = localStorage.getItem('mentor_connect_demo_role') as UserRole | null
-    const savedDemoRoll = localStorage.getItem('mentor_connect_demo_roll')
+    // In production builds, demonstration bypass is strictly disabled
+    if (isProduction) {
+      localStorage.removeItem('mentor_connect_demo_role')
+      localStorage.removeItem('mentor_connect_demo_roll')
+    }
+
+    const savedDemoRole = !isProduction ? (localStorage.getItem('mentor_connect_demo_role') as UserRole | null) : null
+    const savedDemoRoll = !isProduction ? localStorage.getItem('mentor_connect_demo_roll') : null
 
     if (!configured) {
-      if (savedDemoRole) {
+      if (!isProduction && savedDemoRole) {
         setRole(savedDemoRole)
         if (savedDemoRole === 'student') {
           const matched = MOCK_STUDENTS.find(s => s.rollNumber === (savedDemoRoll || '23L31A5401'))
@@ -130,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null)
       if (session?.user) {
         loadUserDetails(session.user.id, session.user.email).finally(() => setLoading(false))
-      } else if (savedDemoRole) {
+      } else if (!isProduction && savedDemoRole) {
         setRole(savedDemoRole)
         if (savedDemoRole === 'student') {
           const matched = MOCK_STUDENTS.find(s => s.rollNumber === (savedDemoRoll || '23L31A5401'))
@@ -151,7 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('mentor_connect_demo_roll')
         loadUserDetails(session.user.id, session.user.email)
       } else {
-        const demoRole = localStorage.getItem('mentor_connect_demo_role') as UserRole | null
+        const demoRole = !isProduction ? (localStorage.getItem('mentor_connect_demo_role') as UserRole | null) : null
         if (!demoRole) {
           setRole('guest')
           setStudentProfile(null)
@@ -164,7 +172,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       subscription.unsubscribe()
     }
-  }, [configured])
+  }, [configured, isProduction])
 
   const signInWithPassword = async (email: string, password: string): Promise<{ error: Error | null; role?: UserRole }> => {
     try {
@@ -225,6 +233,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const loginAsDemo = (demoRole: 'admin' | 'student', rollNumber?: string) => {
+    if (isProduction) {
+      console.warn('Demo authentication is strictly disabled in production.')
+      return
+    }
     localStorage.setItem('mentor_connect_demo_role', demoRole)
     if (rollNumber) {
       localStorage.setItem('mentor_connect_demo_roll', rollNumber)
@@ -251,6 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         studentRollNumber,
         loading,
         isConfigured: configured,
+        isDemoAllowed: !isProduction,
         signInWithPassword,
         signOut,
         resetPasswordForEmail,

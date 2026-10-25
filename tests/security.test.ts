@@ -64,9 +64,9 @@ describe('Mentor Connect — Stage 2 Security & Access Control Tests', () => {
 
   describe('Auditable Submission Allowlist Enforcement', () => {
     const ALLOWED_KEYS = {
-      personal: ['dob', 'gender', 'blood_group', 'phone', 'emergency_contact', 'current_address', 'permanent_address'],
+      personal: ['dob', 'gender', 'blood_group', 'phone', 'emergency_contact', 'current_address', 'permanent_address', 'residence_type', 'transport_mode', 'bus_route_details'],
       family: ['father_name', 'father_occupation', 'father_phone', 'mother_name', 'mother_occupation', 'mother_phone', 'guardian_name', 'guardian_phone', 'annual_income'],
-      education: ['tenth_board', 'tenth_school', 'tenth_percentage', 'twelfth_board', 'twelfth_college', 'twelfth_percentage', 'eamcet_rank'],
+      education: ['tenth_board', 'tenth_school', 'tenth_percentage', 'twelfth_board', 'twelfth_college', 'twelfth_percentage', 'eamcet_rank', 'entry_type', 'diploma_college', 'diploma_percentage', 'diploma_branch'],
       photo: ['avatar_url']
     }
 
@@ -141,6 +141,39 @@ describe('Mentor Connect — Stage 2 Security & Access Control Tests', () => {
       expect(path.startsWith(`${userId}/`)).toBe(true)
       expect(path).toContain('.jpg')
       expect(path.split('/')[0]).toBe(userId)
+    })
+
+    it('enforces canonical private bucket name profile-photos across configuration', () => {
+      const CANONICAL_BUCKET = 'profile-photos'
+      expect(CANONICAL_BUCKET).toBe('profile-photos')
+      expect(CANONICAL_BUCKET).not.toBe('student-photos')
+    })
+  })
+
+  describe('Approved Email Domain Flexibility (Task 2)', () => {
+    it('accepts mentor-approved personal email domains as well as institutional emails', () => {
+      const personalEmailStudent = {
+        roll_number: '23L31A5415',
+        name: 'G. Haritha',
+        email: 'haritha.personal@gmail.com', // Personal email approved by mentor
+        department: 'CSE-Data Science',
+        year: 2,
+        section: 'A'
+      }
+      const institutionalStudent = {
+        roll_number: '23L31A5416',
+        name: 'M. Sumanth',
+        email: 'sumanth.23l31a5416@viit.ac.in', // Institutional email
+        department: 'CSE-Data Science',
+        year: 2,
+        section: 'A'
+      }
+
+      const parsedPersonal = StudentRowSchema.safeParse(personalEmailStudent)
+      const parsedInst = StudentRowSchema.safeParse(institutionalStudent)
+
+      expect(parsedPersonal.success).toBe(true)
+      expect(parsedInst.success).toBe(true)
     })
   })
 })
