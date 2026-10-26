@@ -19,7 +19,7 @@ describe('Mentor Connect — Development Roadmap & Supabase Persistence', () => 
   // --------------------------------------------------------------------------
   it('1. verifies all authoritative roadmap entries retain full metadata without invention or loss', () => {
     expect(INITIAL_ROADMAP_ITEMS.length).toBeGreaterThanOrEqual(22)
-    expect(INITIAL_ROADMAP_ITEMS.length).toBe(27)
+    expect(INITIAL_ROADMAP_ITEMS.length).toBe(28)
 
     const categories = new Set(INITIAL_ROADMAP_ITEMS.map((it) => it.category))
     expect(categories.has('completed')).toBe(true)

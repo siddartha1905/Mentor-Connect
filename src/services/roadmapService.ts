@@ -378,6 +378,19 @@ export const INITIAL_ROADMAP_ITEMS: RoadmapItem[] = [
     dateAdded: '2026-10-25T21:15:00Z',
     updatedAt: '2026-10-25T21:15:00Z',
   },
+  {
+    id: 'e0000000-0000-0000-0000-000000000007',
+    title: 'Public Administrator Account Self-Registration',
+    description: 'Public "Create Administrator Account" registration modal and self-signup capability on Faculty Login page.',
+    moduleLocation: 'Admin Portal',
+    category: 'removed',
+    priority: 'high',
+    reasonRemovedOrDeferred: 'Public administrator self-registration decommissioned now that the official administrator account is provisioned. Administrative access is strictly restricted to institutionally authorized accounts.',
+    notes: 'Removed public registration link and modal from AdminLogin. Audited user_roles policies and triggers to ensure ordinary users cannot elevate privileges.',
+    tags: ['intentional-removal', 'security', 'access-control'],
+    dateAdded: '2026-10-26T02:30:00Z',
+    updatedAt: '2026-10-26T02:30:00Z',
+  },
 ]
 
 export const ROADMAP_DETERMINISTIC_UUID_MAP: Record<string, string> = {
@@ -408,6 +421,7 @@ export const ROADMAP_DETERMINISTIC_UUID_MAP: Record<string, string> = {
   'rdm-r-4': 'e0000000-0000-0000-0000-000000000004',
   'rdm-r-5': 'e0000000-0000-0000-0000-000000000005',
   'rdm-r-6': 'e0000000-0000-0000-0000-000000000006',
+  'rdm-r-7': 'e0000000-0000-0000-0000-000000000007',
 }
 
 function getLocalRoadmap(): RoadmapItem[] {

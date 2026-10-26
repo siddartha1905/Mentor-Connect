@@ -464,27 +464,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  const signUp = async (email: string, password: string): Promise<{ error: Error | null; user?: User | null }> => {
-    if (!configured) {
-      return { error: new Error('Supabase is not configured') }
-    }
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/login/reset-password`
-        }
-      })
-      if (error) {
-        return { error }
-      }
-      if (data.user) {
-        await loadUserDetails(data.user.id, data.user.email)
-      }
-      return { error: null, user: data.user }
-    } catch (err: unknown) {
-      return { error: err instanceof Error ? err : new Error(String(err)) }
+  const signUp = async (_email: string, _password: string): Promise<{ error: Error | null; user?: User | null }> => {
+    return {
+      error: new Error(
+        'Public registration is disabled. Administrator accounts are pre-provisioned exclusively by institutional IT administration.'
+      ),
     }
   }
 
