@@ -8,16 +8,20 @@ import {
   AlertCircle,
   HelpCircle,
   Info,
+  ArrowLeft,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DemoNotice } from '@/components/shared/DemoNotice'
 import { MOCK_STUDENTS, MOCK_ATTENDANCE } from '@/data/mock'
+import { useAuth } from '@/app/providers/AuthContext'
 
 export const StudentCheckIn: React.FC = () => {
-  const student = MOCK_STUDENTS[0] // Aarav Sharma
-  const attendance = MOCK_ATTENDANCE[student.rollNumber]
+  const { studentProfile, isDemo } = useAuth()
+  const student = studentProfile || (isDemo ? MOCK_STUDENTS[0] : null)
+  const attendance = isDemo && student ? (MOCK_ATTENDANCE[student.rollNumber] || MOCK_ATTENDANCE['23L31A5401']) : null
 
   // Form states
   const [presenceStatus, setPresenceStatus] = React.useState<'Present' | 'Absent' | 'Late'>('Present')
@@ -32,9 +36,20 @@ export const StudentCheckIn: React.FC = () => {
 
   return (
     <div className="space-y-5 pb-6">
+      {/* Back to Home Navigation */}
+      <div>
+        <Link
+          to="/student"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Home</span>
+        </Link>
+      </div>
+
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <CalendarCheck2 className="h-6 w-6 text-indigo-600" />
+          <CalendarCheck2 className="h-6 w-6 text-purple-700" />
           Daily & Weekly Check-in
         </h1>
         <p className="text-xs text-slate-500">
@@ -58,10 +73,12 @@ export const StudentCheckIn: React.FC = () => {
         </p>
       </div>
 
-      <DemoNotice
-        variant="inline"
-        message="Non-operational preview. Stage 1 captures typed inputs in local memory without backend persistence."
-      />
+      {isDemo && (
+        <DemoNotice
+          variant="inline"
+          message="Demonstration Environment: Daily attendance check-in preview."
+        />
+      )}
 
       {/* Check-in Form */}
       {submitted ? (
@@ -69,9 +86,9 @@ export const StudentCheckIn: React.FC = () => {
           <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
             <CheckCircle2 className="h-6 w-6" />
           </div>
-          <CardTitle className="text-emerald-900 text-lg">Check-in Recorded (Demo Mode)</CardTitle>
+          <CardTitle className="text-emerald-900 text-lg">Check-in Recorded</CardTitle>
           <p className="text-xs text-slate-600 max-w-sm mx-auto">
-            Your attendance status (<strong>{presenceStatus}</strong>) and notes have been staged in memory. In Stage 2, this will persist to Supabase PostgreSQL.
+            Your attendance status (<strong>{presenceStatus}</strong>) and notes have been logged for faculty mentor review.
           </p>
           <Button
             variant="outline"
@@ -83,7 +100,7 @@ export const StudentCheckIn: React.FC = () => {
             }}
             className="mt-2"
           >
-            Submit Another Demo Entry
+            Submit Another Check-in
           </Button>
         </Card>
       ) : (
@@ -163,23 +180,29 @@ export const StudentCheckIn: React.FC = () => {
       {/* Recent Check-in History */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-bold">Past 5 Check-ins (Sample Data)</CardTitle>
+          <CardTitle className="text-sm font-bold">Past 5 Check-ins {isDemo ? '(Sample Data)' : ''}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {attendance.studentReportedCheckIns.map((item, idx) => (
-            <div
-              key={idx}
-              className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 text-xs"
-            >
-              <div>
-                <span className="font-bold text-slate-800">{item.date}</span>
-                {item.note && <p className="text-[11px] text-slate-500 italic mt-0.5">{item.note}</p>}
+          {attendance?.studentReportedCheckIns && attendance.studentReportedCheckIns.length > 0 ? (
+            attendance.studentReportedCheckIns.map((item, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 text-xs"
+              >
+                <div>
+                  <span className="font-bold text-slate-800">{item.date}</span>
+                  {item.note && <p className="text-[11px] text-slate-500 italic mt-0.5">{item.note}</p>}
+                </div>
+                <Badge variant={item.status === 'Present' ? 'good' : item.status === 'Late' ? 'warning' : 'rejected'}>
+                  {item.status}
+                </Badge>
               </div>
-              <Badge variant={item.status === 'Present' ? 'good' : item.status === 'Late' ? 'warning' : 'rejected'}>
-                {item.status}
-              </Badge>
+            ))
+          ) : (
+            <div className="py-6 text-center text-xs text-slate-400">
+              No check-in history logged yet. Check back after your first session.
             </div>
-          ))}
+          )}
         </CardContent>
       </Card>
     </div>

@@ -63,17 +63,17 @@ export const Logo: React.FC<LogoProps> = ({
         <span
           className={cn(
             textSizes[size],
-            inverted ? 'text-white' : 'text-slate-900',
+            inverted ? 'text-white' : 'text-slate-900 dark:text-white',
             'font-heading leading-tight'
           )}
         >
-          MENTOR <span className="text-indigo-500">CONNECT</span>
+          MENTOR <span className="text-indigo-500 dark:text-indigo-400">CONNECT</span>
         </span>
         {showTagline && (
           <span
             className={cn(
               'text-[10px] font-medium tracking-wide uppercase',
-              inverted ? 'text-slate-300' : 'text-slate-400'
+              inverted ? 'text-slate-300' : 'text-slate-400 dark:text-slate-400'
             )}
           >
             Mentoring & Counselling Portal

@@ -5,9 +5,11 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DemoNotice } from '@/components/shared/DemoNotice'
+import { useAuth } from '@/app/providers/AuthContext'
 
 export const StudentDocuments: React.FC = () => {
-  const [docLinks] = React.useState([
+  const { isDemo } = useAuth()
+  const [docLinks] = React.useState(isDemo ? [
     {
       title: 'Class 10 & Intermediate Marks Memos (Certified Copy)',
       category: 'Academic Records',
@@ -29,17 +31,17 @@ export const StudentDocuments: React.FC = () => {
       service: 'External Repository Link',
       status: 'Staged',
     },
-  ])
+  ] : [])
 
   return (
     <div className="space-y-4 pb-6">
       <div className="flex items-center justify-between">
         <Link
-          to="/student/more"
+          to="/student"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to More</span>
+          <span>Back to Home</span>
         </Link>
         <Badge variant="approved">Read-Only Mode</Badge>
       </div>
@@ -54,10 +56,12 @@ export const StudentDocuments: React.FC = () => {
         </p>
       </div>
 
-      <DemoNotice
-        variant="inline"
-        message="Visual document link shell. Direct Google Drive API sync and encrypted uploads will be connected in Stage 2."
-      />
+      {isDemo && (
+        <DemoNotice
+          variant="inline"
+          message="Demonstration Environment: Document and external resource links repository."
+        />
+      )}
 
       {/* Add New Link Card */}
       <Card className="border-dashed border-2 border-indigo-200 bg-indigo-50/30 p-4 text-center">
@@ -78,31 +82,38 @@ export const StudentDocuments: React.FC = () => {
 
       {/* Document Link List */}
       <div className="space-y-2.5">
-        {docLinks.map((doc, idx) => (
-          <Card key={idx} className="p-4 flex items-center justify-between">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 mt-0.5">
-                <Folder className="h-4 w-4" />
+        {docLinks.length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-400 bg-white rounded-2xl border border-slate-200 p-6 space-y-1">
+            <p className="font-semibold text-slate-600">No Document Links Attached Yet</p>
+            <p>You can attach certified external links for certificate review or project code.</p>
+          </div>
+        ) : (
+          docLinks.map((doc, idx) => (
+            <Card key={idx} className="p-4 flex items-center justify-between">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 mt-0.5">
+                  <Folder className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900">{doc.title}</h4>
+                  <p className="text-[11px] text-slate-500">{doc.category} • {doc.service}</p>
+                  <span className="text-[10px] text-slate-400">Added on {doc.updatedAt}</span>
+                </div>
               </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900">{doc.title}</h4>
-                <p className="text-[11px] text-slate-500">{doc.category} • {doc.service}</p>
-                <span className="text-[10px] text-slate-400">Added on {doc.updatedAt}</span>
-              </div>
-            </div>
 
-            <div className="flex flex-col items-end gap-1">
-              <Badge variant="good">{doc.status}</Badge>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:underline pt-1"
-              >
-                <span>Open Link</span>
-                <ExternalLink className="h-3 w-3" />
-              </button>
-            </div>
-          </Card>
-        ))}
+              <div className="flex flex-col items-end gap-1">
+                <Badge variant="good">{doc.status}</Badge>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:underline pt-1"
+                >
+                  <span>Open Link</span>
+                  <ExternalLink className="h-3 w-3" />
+                </button>
+              </div>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   )

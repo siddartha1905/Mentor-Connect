@@ -9,7 +9,7 @@ export interface DemoNoticeProps {
 }
 
 export const DemoNotice: React.FC<DemoNoticeProps> = ({
-  message = 'Stage 1 Development Preview: All records shown are fictional demo data. Backend integration and live persistence will be connected in a later stage.',
+  message = 'Demonstration environment with sample cohort records.',
   variant = 'banner',
   className,
 }) => {
@@ -22,7 +22,7 @@ export const DemoNotice: React.FC<DemoNoticeProps> = ({
         )}
       >
         <Sparkles className="h-3 w-3 text-amber-600 shrink-0" />
-        <span>Stage 1 Demo Preview</span>
+        <span>Demo Environment</span>
       </span>
     )
   }
@@ -53,7 +53,7 @@ export const DemoNotice: React.FC<DemoNoticeProps> = ({
         <Sparkles className="h-3.5 w-3.5" />
       </div>
       <div className="flex-1">
-        <span className="font-semibold mr-1.5">Stage 1 Architecture Preview:</span>
+        <span className="font-semibold mr-1.5">Demo Mode:</span>
         <span className="text-amber-800/90">{message}</span>
       </div>
     </div>

@@ -6,7 +6,8 @@ import {
   RotateCcw,
   Sparkles,
   Loader2,
-  MessageSquare
+  MessageSquare,
+  ShieldCheck
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -19,7 +20,7 @@ import { approvalService, type SubmissionWithStudent } from '@/services/approval
 import { useAuth } from '@/app/providers/AuthContext'
 
 export const ApprovalCentre: React.FC = () => {
-  const { isConfigured } = useAuth()
+  const { isConfigured, isDemo } = useAuth()
   const [approvals, setApprovals] = React.useState<ApprovalItem[]>(INITIAL_APPROVALS)
   const [dbSubmissions, setDbSubmissions] = React.useState<SubmissionWithStudent[]>([])
   const [statusMessage, setStatusMessage] = React.useState<string | null>(null)
@@ -43,7 +44,7 @@ export const ApprovalCentre: React.FC = () => {
   const [submittingAction, setSubmittingAction] = React.useState(false)
 
   const loadSubmissions = React.useCallback(async () => {
-    if (!isConfigured) return
+    if (!isConfigured || isDemo) return
     setLoading(true)
     try {
       const data = await approvalService.getAllSubmissions(activeFilter === 'Changes Requested' ? 'Corrections_Requested' : activeFilter)
@@ -51,7 +52,7 @@ export const ApprovalCentre: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }, [isConfigured, activeFilter])
+  }, [isConfigured, isDemo, activeFilter])
 
   React.useEffect(() => {
     loadSubmissions()
@@ -72,7 +73,7 @@ export const ApprovalCentre: React.FC = () => {
     setSubmittingAction(true)
 
     try {
-      if (isConfigured) {
+      if (isConfigured && !isDemo) {
         const res = await approvalService.reviewSubmission(submissionId, action, remarks)
         if (res.success) {
           setStatusMessage(`Transaction Committed: Submission successfully marked as "${action}" in PostgreSQL.`)
@@ -95,9 +96,9 @@ export const ApprovalCentre: React.FC = () => {
     }
   }
 
-  // Active items to display: combine dbSubmissions (if configured) or mock
+  // Active items to display: strictly dbSubmissions (if configured) or mock
   const displayItems: ApprovalItem[] = React.useMemo(() => {
-    if (isConfigured && dbSubmissions.length > 0) {
+    if (isConfigured && !isDemo) {
       return dbSubmissions.map(sub => {
         const student = sub.student
         return {
@@ -118,7 +119,7 @@ export const ApprovalCentre: React.FC = () => {
       if (activeFilter === 'All') return true
       return item.status === activeFilter
     })
-  }, [isConfigured, dbSubmissions, approvals, activeFilter])
+  }, [isConfigured, isDemo, dbSubmissions, approvals, activeFilter])
 
   return (
     <div className="space-y-6 pb-12">
@@ -126,10 +127,10 @@ export const ApprovalCentre: React.FC = () => {
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <CheckSquare className="h-6 w-6 text-purple-700" />
-            Profile Approval Centre
+            Institutional Approval Centre
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Section-wise verification for student personal, address, and academic updates.
+            Administrative review for institutional record updates and exception overrides.
           </p>
         </div>
 
@@ -150,10 +151,19 @@ export const ApprovalCentre: React.FC = () => {
         </div>
       </div>
 
-      <DemoNotice
-        variant="inline"
-        message={isConfigured ? "Connected to Supabase. Faculty approvals execute atomic database RPC transaction (review_profile_submission)." : "Demo mode only. Approval actions update component state in browser memory."}
-      />
+      <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-xs text-indigo-950 flex items-start gap-2.5">
+        <ShieldCheck className="h-4 w-4 text-indigo-600 mt-0.5 shrink-0" />
+        <div>
+          <span className="font-bold">Direct Student Profile Management Active:</span> Self-reported student information (personal details, address, family, education, skills, and achievements) is now directly maintained by students under <em>"Student-Provided"</em> classification without generating approval tickets. This Approval Centre is dedicated to official institutional changes and historical audits.
+        </div>
+      </div>
+
+      {isDemo && (
+        <DemoNotice
+          variant="inline"
+          message="Demo mode only. Approval actions update component state in browser memory."
+        />
+      )}
 
       {statusMessage && (
         <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-purple-950 text-xs font-semibold flex items-center gap-2 animate-fade-in">
@@ -173,7 +183,7 @@ export const ApprovalCentre: React.FC = () => {
       <div className="space-y-4">
         {displayItems.length === 0 && !loading && (
           <div className="p-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
-            No submissions found under the "{activeFilter}" filter.
+            No submissions found under the "{activeFilter}" filter. When students submit updates from the onboarding workflow, they will appear here for faculty verification.
           </div>
         )}
 

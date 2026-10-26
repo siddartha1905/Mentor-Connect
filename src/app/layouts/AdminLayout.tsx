@@ -22,6 +22,8 @@ import {
   ArrowRight,
   Shield,
   LogOut,
+  CalendarClock,
+  Layers,
 } from 'lucide-react'
 import { Logo } from '@/components/shared/Logo'
 import { Avatar } from '@/components/ui/avatar'
@@ -29,41 +31,80 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog } from '@/components/ui/dialog'
 import { MOCK_STUDENTS, MOCK_ANNOUNCEMENTS } from '@/data/mock'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/app/providers/AuthContext'
+import { studentService, type StudentRecord } from '@/services/studentService'
 
 export const AdminLayout: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const { isConfigured, isDemo } = useAuth()
   const [sidebarOpen, setSidebarOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState('')
   const [searchFocused, setSearchFocused] = React.useState(false)
   const [notificationsOpen, setNotificationsOpen] = React.useState(false)
+  const [realStudents, setRealStudents] = React.useState<StudentRecord[]>([])
 
-  // 12 Primary Administrator Navigation Routes
+  React.useEffect(() => {
+    let isMounted = true
+    if (isConfigured && !isDemo) {
+      studentService
+        .getAllStudents()
+        .then((data) => {
+          if (isMounted) setRealStudents(data || [])
+        })
+        .catch(() => {})
+    }
+    return () => {
+      isMounted = false
+    }
+  }, [isConfigured, isDemo])
+
+  const studentCount = isConfigured && !isDemo ? realStudents.length : 1
+
+  // Prioritized Administrator Navigation Routes
   const navLinks = [
     { label: 'Dashboard', path: '/admin', icon: LayoutDashboard, exact: true },
+    { label: 'Student Management', path: '/admin/students', icon: Users, badge: `${studentCount}` },
     { label: 'Mentor 360° View', path: '/admin/mentor360', icon: Compass, badge: 'Core' },
-    { label: 'Student Management', path: '/admin/students', icon: Users, badge: `${MOCK_STUDENTS.length}` },
-    { label: 'Approval Centre', path: '/admin/approvals', icon: CheckSquare, badge: '2 Pending' },
-    { label: 'Attendance Hub', path: '/admin/attendance', icon: CalendarDays },
-    { label: 'Academic Records', path: '/admin/academics', icon: GraduationCap },
-    { label: 'Mentoring Workflow', path: '/admin/mentoring', icon: HeartHandshake },
     { label: 'Communications', path: '/admin/communication', icon: MessageSquare },
-    { label: 'Automated Mentor', path: '/admin/automation', icon: Sparkles },
-    { label: 'Growth & Activities', path: '/admin/growth', icon: TrendingUp },
-    { label: 'Forms & Surveys', path: '/admin/surveys', icon: ClipboardList },
-    { label: 'Reports & Analytics', path: '/admin/reports', icon: BarChart3 },
+    { label: 'Profile Deadlines', path: '/admin/deadlines', icon: CalendarClock, badge: 'Nov 3' },
+    { label: 'Development Roadmap', path: '/admin/roadmap', icon: Layers },
     { label: 'Administration', path: '/admin/settings', icon: Settings },
   ]
 
-  // Fictional Student Search Filter
+  // Real or Demo Student Search Filter (by name, roll number, or email)
   const searchResults = React.useMemo(() => {
     if (!searchQuery.trim()) return []
+    const q = searchQuery.toLowerCase().trim()
+    if (isConfigured && !isDemo) {
+      return realStudents
+        .filter(
+          (s) =>
+            s.roll_number.toLowerCase().includes(q) ||
+            s.name.toLowerCase().includes(q) ||
+            (s.email && s.email.toLowerCase().includes(q))
+        )
+        .map((s) => ({
+          rollNumber: s.roll_number,
+          fullName: s.name,
+          department: s.department || 'CSE-Data Science',
+          email: s.email,
+          avatarUrl: s.avatar_url || '',
+        }))
+    }
     return MOCK_STUDENTS.filter(
       (s) =>
-        s.rollNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.fullName.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [searchQuery])
+        s.rollNumber.toLowerCase().includes(q) ||
+        s.fullName.toLowerCase().includes(q) ||
+        (s.email && s.email.toLowerCase().includes(q))
+    ).map((s) => ({
+      rollNumber: s.rollNumber,
+      fullName: s.fullName,
+      department: s.department,
+      email: s.email,
+      avatarUrl: s.avatarUrl,
+    }))
+  }, [searchQuery, isConfigured, isDemo, realStudents])
 
   const handleSelectStudent = (rollNumber: string) => {
     setSearchQuery('')
@@ -110,15 +151,15 @@ export const AdminLayout: React.FC = () => {
         <div className="p-3 mx-3 my-2.5 rounded-2xl bg-white/80 border border-purple-200/80 shadow-xs">
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-full bg-purple-200 text-purple-900 flex items-center justify-center font-bold text-xs shrink-0">
-              KR
+              SV
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-slate-900 truncate">Dr. K. S. Rao</p>
-              <p className="text-[10px] text-purple-700 font-semibold truncate">Faculty Mentor (CSE-DS)</p>
+              <p className="text-xs font-bold text-slate-900 truncate">J. Siddartha Varma</p>
+              <p className="text-[10px] text-purple-700 font-semibold truncate">Assistant Professor, CSE-DS</p>
             </div>
           </div>
           <div className="mt-2 pt-2 border-t border-purple-100 flex items-center justify-between text-[10px] text-slate-500 font-medium">
-            <span>38 Active Mentees</span>
+            <span>{isConfigured && !isDemo ? `${realStudents.length} Roster Students` : 'Verified Student Roster'}</span>
             <span className="font-semibold text-emerald-700">Sem 2-1 Active</span>
           </div>
         </div>
@@ -177,7 +218,7 @@ export const AdminLayout: React.FC = () => {
             <span>Exit to Public Portal</span>
           </Link>
           <div className="text-[10px] text-slate-400 px-3">
-            Mentor Connect • Stage 1
+            Mentor Connect • Faculty Portal
           </div>
         </div>
       </aside>
@@ -212,7 +253,7 @@ export const AdminLayout: React.FC = () => {
               {searchFocused && searchQuery.trim() && (
                 <div className="absolute top-11 inset-x-0 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 space-y-1 max-h-72 overflow-y-auto">
                   <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Matches in CSE-DS Fictional Cohort ({searchResults.length})
+                    Matches in {isConfigured && !isDemo ? 'Verified Student Roster' : 'CSE-DS Cohort'} ({searchResults.length})
                   </div>
                   {searchResults.length > 0 ? (
                     searchResults.map((s) => (
@@ -223,10 +264,12 @@ export const AdminLayout: React.FC = () => {
                         className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-purple-50 text-left transition-colors"
                       >
                         <div className="flex items-center gap-2.5">
-                          <Avatar src={s.avatarUrl} alt={s.fullName} fallback={s.fullName} size="sm" />
+                          <Avatar src={s.avatarUrl || undefined} alt={s.fullName} fallback={s.fullName} size="sm" />
                           <div>
                             <p className="text-xs font-bold text-slate-900">{s.fullName}</p>
-                            <p className="text-[10px] font-mono text-purple-700 font-semibold">{s.rollNumber}</p>
+                            <p className="text-[10px] font-mono text-purple-700 font-semibold">
+                              {s.rollNumber}{s.email ? ` • ${s.email}` : ''}
+                            </p>
                           </div>
                         </div>
                         <Badge variant="outline" className="text-[10px]">
@@ -236,7 +279,7 @@ export const AdminLayout: React.FC = () => {
                     ))
                   ) : (
                     <div className="p-3 text-center text-xs text-slate-400">
-                      No matching student roll numbers or names found in mock data.
+                      No matching students found by name, roll number, or email.
                     </div>
                   )}
                 </div>
@@ -270,7 +313,11 @@ export const AdminLayout: React.FC = () => {
             {/* Admin Avatar */}
             <div className="flex items-center gap-2 pl-1">
               <div className="h-9 w-9 rounded-xl bg-purple-100 text-purple-900 flex items-center justify-center font-bold text-xs border border-purple-200 shadow-xs">
-                KR
+                SV
+              </div>
+              <div className="hidden lg:block text-left">
+                <p className="text-xs font-bold text-slate-900">J. Siddartha Varma</p>
+                <p className="text-[10px] text-slate-500">Assistant Professor, CSE-DS</p>
               </div>
             </div>
           </div>
@@ -286,28 +333,30 @@ export const AdminLayout: React.FC = () => {
       <Dialog
         isOpen={notificationsOpen}
         onClose={() => setNotificationsOpen(false)}
-        title="Administrative Alerts & Tasks"
-        description="Pending mentor action items for CSE-DS second-year cohort."
+        title="Administrative Status & Onboarding Alerts"
+        description="Current cohort onboarding status and administrative settings for CSE-DS."
       >
         <div className="space-y-3 pt-1 text-xs">
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-1">
-            <span className="font-bold text-amber-900">Attendance Discrepancy Alert:</span>
-            <p className="text-amber-800">
-              Student Divya Sri Patnala (23L31A5404) attendance is currently 71.8% (Critical). Medical condonation slip submitted.
-            </p>
-          </div>
-
           <div className="p-3 rounded-xl bg-purple-50 border border-purple-200 space-y-1">
-            <span className="font-bold text-purple-900">Pending Approval Queue:</span>
+            <span className="font-bold text-purple-900">Profile Editing Deadline:</span>
             <p className="text-purple-800">
-              2 profile updates awaiting faculty review in the Approval Centre.
+              Active deadline is set for Tuesday, November 3, 2026 at 11:59:59 PM IST. Governed by PostgreSQL trigger.
             </p>
           </div>
 
-          <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 space-y-1">
-            <span className="font-bold text-blue-900">Weekly Mentoring Schedule:</span>
-            <p className="text-blue-800">
-              Slot bookings for Tuesday & Thursday sessions available for confirmation.
+          <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 space-y-1">
+            <span className="font-bold text-indigo-900">Verified Student Roster:</span>
+            <p className="text-indigo-800">
+              {isConfigured && !isDemo
+                ? `${realStudents.length} real students loaded from Supabase public.students.`
+                : 'Verified roster initialized for onboarding and account activation.'}
+            </p>
+          </div>
+
+          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+            <span className="font-bold text-slate-900">Development Roadmap:</span>
+            <p className="text-slate-700">
+              Deferred and future features are categorized in the dedicated Development Roadmap workspace.
             </p>
           </div>
         </div>

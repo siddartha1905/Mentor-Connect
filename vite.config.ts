@@ -56,6 +56,9 @@ export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1500,
   },
+  optimizeDeps: {
+    include: ['recharts', '@supabase/supabase-js', 'papaparse', 'zod', 'lucide-react'],
+  },
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),

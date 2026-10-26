@@ -11,9 +11,11 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { DemoNotice } from '@/components/shared/DemoNotice'
+import { useAuth } from '@/app/providers/AuthContext'
 import { MOCK_STUDENTS } from '@/data/mock'
 
 export const GrowthActivities: React.FC = () => {
+  const { isDemo } = useAuth()
   return (
     <div className="space-y-6 pb-12">
       <div>
@@ -26,10 +28,12 @@ export const GrowthActivities: React.FC = () => {
         </p>
       </div>
 
-      <DemoNotice
-        variant="inline"
-        message="Stage 1 Interface Shell. In Stage 2, student achievements will integrate with accreditation reports."
-      />
+      {isDemo && (
+        <DemoNotice
+          variant="inline"
+          message="Demonstration Environment: Cohort growth and skills activities ledger preview."
+        />
+      )}
 
       {/* Cohort Highlights */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

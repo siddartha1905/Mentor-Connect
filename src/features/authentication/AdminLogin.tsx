@@ -11,7 +11,7 @@ import { useAuth } from '@/app/providers/AuthContext'
 export const AdminLogin: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { signInWithPassword, resetPasswordForEmail, loginAsDemo, isConfigured, isDemoAllowed } = useAuth()
+  const { signInWithPassword, signUp, resetPasswordForEmail, loginAsDemo, isConfigured, isDemoAllowed } = useAuth()
 
   const [email, setEmail] = React.useState('')
   const [password, setPassword] = React.useState('')
@@ -22,6 +22,14 @@ export const AdminLogin: React.FC = () => {
   const [forgotEmail, setForgotEmail] = React.useState('')
   const [forgotLoading, setForgotLoading] = React.useState(false)
   const [forgotSent, setForgotSent] = React.useState(false)
+
+  // Administrator Account Registration Modal
+  const [isRegisterOpen, setIsRegisterOpen] = React.useState(false)
+  const [regEmail, setRegEmail] = React.useState('')
+  const [regPassword, setRegPassword] = React.useState('')
+  const [regLoading, setRegLoading] = React.useState(false)
+  const [regSuccess, setRegSuccess] = React.useState(false)
+  const [regError, setRegError] = React.useState<string | null>(null)
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -68,6 +76,34 @@ export const AdminLogin: React.FC = () => {
       }
     } finally {
       setForgotLoading(false)
+    }
+  }
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setRegError(null)
+
+    if (!regEmail.trim() || !regPassword.trim()) {
+      setRegError('Please provide institutional email and password.')
+      return
+    }
+    if (regPassword.length < 8) {
+      setRegError('Password must be at least 8 characters.')
+      return
+    }
+
+    setRegLoading(true)
+    try {
+      const res = await signUp(regEmail.trim(), regPassword)
+      if (res.error) {
+        setRegError(res.error.message)
+      } else {
+        setRegSuccess(true)
+      }
+    } catch (err: unknown) {
+      setRegError(err instanceof Error ? err.message : 'Registration failed.')
+    } finally {
+      setRegLoading(false)
     }
   }
 
@@ -210,23 +246,108 @@ export const AdminLogin: React.FC = () => {
             </Button>
           </form>
 
-          {isConfigured && (
-            <div className="pt-1">
-              <DemoNotice
-                variant="inline"
-                message="Connected to Supabase PostgreSQL. Authenticated faculty accounts gain administrative privileges verified through server-side RLS."
-              />
+          <div className="pt-2 text-center text-xs text-slate-500 border-t border-slate-100 flex flex-col gap-2">
+            <div>
+              <span>First time faculty administrator? </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setRegSuccess(false)
+                  setRegError(null)
+                  setIsRegisterOpen(true)
+                }}
+                className="text-purple-700 font-bold hover:underline"
+              >
+                Create Administrator Account
+              </button>
             </div>
-          )}
-
-          <div className="pt-2 text-center text-xs text-slate-500">
-            <span>Student mentee? </span>
-            <Link to="/login/student" className="text-purple-700 font-semibold hover:underline">
-              Switch to Student Login
-            </Link>
+            <div>
+              <span>Student mentee? </span>
+              <Link to="/login/student" className="text-purple-700 font-semibold hover:underline">
+                Switch to Student Login
+              </Link>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Administrator Registration Dialog */}
+      <Dialog
+        isOpen={isRegisterOpen}
+        onClose={() => setIsRegisterOpen(false)}
+        title="Create Administrator Account"
+        description="Provision an administrative user in Supabase Auth. Elevation to admin requires explicit database assignment."
+      >
+        {regSuccess ? (
+          <div className="space-y-3 py-2 text-xs">
+            <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <h4 className="font-bold text-slate-900 text-center text-base">Account Created in Supabase Auth</h4>
+            <p className="text-slate-600 text-center">
+              Your authentication credentials for <strong>{regEmail}</strong> have been created.
+            </p>
+            <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-purple-950 space-y-1.5">
+              <span className="font-bold block">Final Step — Assign Administrator Role in PostgreSQL:</span>
+              <p className="text-[11px] text-slate-600">
+                In Supabase Dashboard SQL Editor for project <code>mttocnlnmmtaugzthfih</code>, run:
+              </p>
+              <pre className="p-2 bg-slate-900 text-purple-200 rounded-lg text-[10px] overflow-x-auto select-all font-mono">
+{`INSERT INTO public.user_roles (user_id, role)
+SELECT id, 'admin' FROM auth.users WHERE email = '${regEmail}'
+ON CONFLICT (user_id) DO UPDATE SET role = 'admin';`}
+              </pre>
+            </div>
+            <div className="text-center pt-2">
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setIsRegisterOpen(false)
+                  setEmail(regEmail)
+                }}
+                className="bg-purple-700 hover:bg-purple-800"
+              >
+                Done — Return to Sign In
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleRegisterSubmit} className="space-y-4">
+            {regError && (
+              <div className="p-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-xs">
+                {regError}
+              </div>
+            )}
+            <Input
+              label="Faculty Institutional Email"
+              type="email"
+              placeholder="e.g. mentor.cseds@viit.ac.in"
+              value={regEmail}
+              onChange={(e) => setRegEmail(e.target.value)}
+              required
+            />
+            <Input
+              label="Password (min 8 characters)"
+              type="password"
+              placeholder="••••••••"
+              value={regPassword}
+              onChange={(e) => setRegPassword(e.target.value)}
+              required
+              minLength={8}
+            />
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setIsRegisterOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" size="sm" disabled={regLoading} className="bg-purple-700 hover:bg-purple-800">
+                {regLoading ? 'Creating...' : 'Create Account'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Dialog>
 
       {/* Forgot Password Dialog */}
       <Dialog

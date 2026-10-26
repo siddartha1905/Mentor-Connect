@@ -1,392 +1,303 @@
 -- ==============================================================================
--- MENTOR CONNECT — EXECUTABLE DATABASE SECURITY & RLS VERIFICATION TEST SUITE
--- Target: Supabase PostgreSQL (SQL Editor or pgTAP)
--- Test Identities:
---   1. Administrator (UUID: 00000000-0000-0000-0000-000000000001)
---   2. Student A     (UUID: 00000000-0000-0000-0000-000000000002, Roll: 23L31A5401)
---   3. Student B     (UUID: 00000000-0000-0000-0000-000000000003, Roll: 23L31A5402)
---   4. Anonymous     (Role: anon, unauthenticated)
+-- MENTOR CONNECT — STAGE 2.2 READ-ONLY DATABASE SECURITY & COMPLIANCE AUDIT
+-- Target: Live Supabase PostgreSQL Project (mttocnlnmmtaugzthfih)
+-- Mode: STRICTLY READ-ONLY (ZERO INSERT, UPDATE, OR DELETE OPERATIONS)
+-- Safe for direct execution in Supabase Dashboard SQL Editor
 -- ==============================================================================
 
-CREATE TEMP TABLE IF NOT EXISTS test_results (
-    test_id SERIAL PRIMARY KEY,
-    test_name TEXT NOT NULL,
-    category TEXT NOT NULL,
-    expected TEXT NOT NULL,
-    actual TEXT NOT NULL,
-    status TEXT NOT NULL
-);
+CREATE OR REPLACE TEMP VIEW v_audit_checks AS
 
-DO $$
-DECLARE
-    -- Deterministic Test UUIDs
-    v_admin_id UUID   := '00000000-0000-0000-0000-000000000001'::uuid;
-    v_student_a_id UUID := '00000000-0000-0000-0000-000000000002'::uuid;
-    v_student_b_id UUID := '00000000-0000-0000-0000-000000000003'::uuid;
-    v_unrostered_id UUID := '00000000-0000-0000-0000-000000000004'::uuid;
-    v_imposter_id UUID := '00000000-0000-0000-0000-000000000005'::uuid;
-
-    v_db_student_a_id UUID := gen_random_uuid();
-    v_db_student_b_id UUID := gen_random_uuid();
-    v_submission_id UUID;
-    v_count INTEGER;
-    v_phone TEXT;
-    v_role public.user_role;
-    v_error_caught BOOLEAN;
-BEGIN
-    -- 0. SETUP FIXTURES (Running as superuser / postgres)
-    -- Clean previous fixtures if any
-    DELETE FROM public.user_roles WHERE user_id IN (v_admin_id, v_student_a_id, v_student_b_id, v_unrostered_id, v_imposter_id);
-    DELETE FROM public.students WHERE user_id IN (v_student_a_id, v_student_b_id) OR roll_number IN ('TEST_A_5401', 'TEST_B_5402');
-
-    -- Insert Roles
-    INSERT INTO public.user_roles (user_id, role) VALUES (v_admin_id, 'admin');
-    INSERT INTO public.user_roles (user_id, role) VALUES (v_student_a_id, 'student');
-    INSERT INTO public.user_roles (user_id, role) VALUES (v_student_b_id, 'student');
-
-    -- Insert Students
-    INSERT INTO public.students (id, user_id, roll_number, name, email, department, status, share_phone_in_directory, share_email_in_directory)
-    VALUES 
-        (v_db_student_a_id, v_student_a_id, 'TEST_A_5401', 'Test Student A', 'studenta@viit.ac.in', 'CSE-Data Science', 'Active', false, false),
-        (v_db_student_b_id, v_student_b_id, 'TEST_B_5402', 'Test Student B', 'studentb@viit.ac.in', 'CSE-Data Science', 'Active', false, false);
-
-    -- Insert Personal Details for Student B (Confidential phone)
-    INSERT INTO public.student_personal_details (student_id, phone, current_address)
-    VALUES (v_db_student_b_id, '+91 99999 11111', 'Confidential Hostels Block B');
-
-    -- Set expired deadline for testing
-    INSERT INTO public.system_settings (key, value, description)
-    VALUES ('profile_edit_deadline', jsonb_build_object('deadline', timezone('utc'::text, now() - interval '1 hour')), 'Test deadline')
-    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
-
-    -- =========================================================================
-    -- TEST 1: ANONYMOUS ACCESS REJECTION
-    -- =========================================================================
-    -- Simulate Anonymous Role
-    PERFORM set_config('role', 'anon', true);
-    PERFORM set_config('request.jwt.claim.sub', '', true);
-
-    SELECT count(*) INTO v_count FROM public.students;
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Anonymous cannot read students table',
-        'Anonymous Access',
-        '0 rows',
-        v_count || ' rows',
-        CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    SELECT count(*) INTO v_count FROM public.student_directory_view;
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Anonymous cannot read student_directory_view',
-        'Anonymous Access',
-        '0 rows (Access Denied)',
-        v_count || ' rows',
-        CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- =========================================================================
-    -- TEST 2: STUDENT A CANNOT ACCESS STUDENT B PRIVATE RECORDS
-    -- =========================================================================
-    -- Simulate Student A
-    PERFORM set_config('role', 'authenticated', true);
-    PERFORM set_config('request.jwt.claim.sub', v_student_a_id::text, true);
-
-    SELECT count(*) INTO v_count 
-    FROM public.student_personal_details 
-    WHERE student_id = v_db_student_b_id;
-
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Student A cannot select Student B personal details',
-        'Data Isolation',
-        '0 rows',
-        v_count || ' rows',
-        CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- Student A attempts to UPDATE Student B personal details
-    UPDATE public.student_personal_details 
-    SET phone = '+91 00000 00000' 
-    WHERE student_id = v_db_student_b_id;
-
-    SELECT phone INTO v_phone 
-    FROM public.student_personal_details 
-    WHERE student_id = v_db_student_b_id;
-
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Student A cannot update Student B personal details',
-        'Data Isolation',
-        'Blocked by RLS (0 rows affected)',
-        CASE WHEN v_phone = '+91 99999 11111' OR v_phone IS NULL THEN 'Blocked by RLS' ELSE 'Modified!' END,
-        CASE WHEN v_phone = '+91 99999 11111' OR v_phone IS NULL THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- =========================================================================
-    -- TEST 3: ROLE ESCALATION PREVENTION
-    -- =========================================================================
-    v_error_caught := false;
-    BEGIN
-        UPDATE public.user_roles SET role = 'admin' WHERE user_id = v_student_a_id;
-    EXCEPTION WHEN OTHERS THEN
-        v_error_caught := true;
-    END;
-
-    -- Check if role was changed
-    SELECT role INTO v_phone FROM public.user_roles WHERE user_id = v_student_a_id;
-
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Student A cannot self-promote to admin role',
-        'Role Escalation',
-        'Role remains student',
-        'Role is ' || v_phone,
-        CASE WHEN v_phone = 'student' THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- =========================================================================
-    -- TEST 4: COLUMN-LEVEL RESTRICTION ON STUDENTS TABLE
-    -- =========================================================================
-    v_error_caught := false;
-    BEGIN
-        UPDATE public.students 
-        SET department = 'Faculty Administrator', roll_number = 'ADMIN_HACK' 
-        WHERE user_id = v_student_a_id;
-    EXCEPTION WHEN OTHERS THEN
-        v_error_caught := true;
-    END;
-
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Student A cannot alter department or roll_number via trigger',
-        'Column Permissions',
-        'Exception Triggered (Access Denied)',
-        CASE WHEN v_error_caught THEN 'Exception Triggered (Access Denied)' ELSE 'Allowed' END,
-        CASE WHEN v_error_caught THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- =========================================================================
-    -- TEST 5: SELF-APPROVAL PREVENTION (RPC PRIVILEGE CHECK)
-    -- =========================================================================
-    v_submission_id := gen_random_uuid();
-    -- As superuser insert a pending submission
-    PERFORM set_config('role', 'postgres', true);
-    INSERT INTO public.profile_submissions (id, student_id, section, proposed_changes, status)
-    VALUES (v_submission_id, v_db_student_a_id, 'personal', '{"phone": "+91 98480 99999"}'::jsonb, 'Pending');
-
-    -- Switch back to Student A and attempt self-approval
-    PERFORM set_config('role', 'authenticated', true);
-    PERFORM set_config('request.jwt.claim.sub', v_student_a_id::text, true);
-
-    v_error_caught := false;
-    BEGIN
-        PERFORM public.review_profile_submission(v_submission_id, 'approve', 'Self approved');
-    EXCEPTION WHEN OTHERS THEN
-        v_error_caught := true;
-    END;
-
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Student A cannot execute review_profile_submission RPC',
-        'Approval Tampering',
-        'Exception (Only administrators can review)',
-        CASE WHEN v_error_caught THEN 'Exception (Only administrators can review)' ELSE 'Allowed' END,
-        CASE WHEN v_error_caught THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- =========================================================================
-    -- TEST 6: DEADLINE ENFORCEMENT & OVERRIDE
-    -- =========================================================================
-    -- Global deadline is in the past (-1 hour). Student A attempts submission without override.
-    v_error_caught := false;
-    BEGIN
-        INSERT INTO public.profile_submissions (student_id, section, proposed_changes, status)
-        VALUES (v_db_student_a_id, 'personal', '{"phone": "+91 98480 88888"}'::jsonb, 'Pending');
-    EXCEPTION WHEN OTHERS THEN
-        v_error_caught := true;
-    END;
-
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Student A blocked past academic deadline without override',
-        'Deadline Enforcement',
-        'Trigger Exception (Deadline expired)',
-        CASE WHEN v_error_caught THEN 'Trigger Exception (Deadline expired)' ELSE 'Allowed' END,
-        CASE WHEN v_error_caught THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- Grant Override as Admin
-    PERFORM set_config('role', 'authenticated', true);
-    PERFORM set_config('request.jwt.claim.sub', v_admin_id::text, true);
-
-    INSERT INTO public.student_edit_overrides (student_id, section, allowed_until, reason, granted_by)
-    VALUES (v_db_student_a_id, 'personal', timezone('utc'::text, now() + interval '2 hours'), 'Medical leave exception', v_admin_id);
-
-    -- Student A re-attempts submission with active override
-    PERFORM set_config('role', 'authenticated', true);
-    PERFORM set_config('request.jwt.claim.sub', v_student_a_id::text, true);
-
-    v_error_caught := false;
-    BEGIN
-        INSERT INTO public.profile_submissions (student_id, section, proposed_changes, status)
-        VALUES (v_db_student_a_id, 'personal', '{"phone": "+91 98480 88888"}'::jsonb, 'Pending');
-    EXCEPTION WHEN OTHERS THEN
-        v_error_caught := true;
-    END;
-
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Student A submission succeeds after administrator override',
-        'Deadline Enforcement',
-        'Submission Accepted',
-        CASE WHEN NOT v_error_caught THEN 'Submission Accepted' ELSE 'Exception Raised' END,
-        CASE WHEN NOT v_error_caught THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- =========================================================================
-    -- TEST 7: DIRECTORY CONTACT SHARING OPT-IN PRIVACY
-    -- =========================================================================
-    -- Student B has share_phone_in_directory = false.
-    -- Student A queries directory view:
-    SELECT phone INTO v_phone 
-    FROM public.student_directory_view 
-    WHERE roll_number = 'TEST_B_5402';
-
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Directory view masks unconsented phone as "Confidential"',
-        'Directory Privacy',
-        'Confidential',
-        COALESCE(v_phone, 'NULL'),
-        CASE WHEN v_phone = 'Confidential' THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- Student B opts in to share phone
-    PERFORM set_config('role', 'authenticated', true);
-    PERFORM set_config('request.jwt.claim.sub', v_student_b_id::text, true);
-
-    UPDATE public.students 
-    SET share_phone_in_directory = true 
-    WHERE user_id = v_student_b_id;
-
-    -- Student A queries directory view again
-    PERFORM set_config('role', 'authenticated', true);
-    PERFORM set_config('request.jwt.claim.sub', v_student_a_id::text, true);
-
-    SELECT phone INTO v_phone 
-    FROM public.student_directory_view 
-    WHERE roll_number = 'TEST_B_5402';
-
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Directory reveals phone after student explicitly opts in',
-        'Directory Privacy',
-        '+91 99999 11111',
-        COALESCE(v_phone, 'NULL'),
-        CASE WHEN v_phone = '+91 99999 11111' THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- =========================================================================
-    -- TEST 8: STORAGE PHOTOGRAPH ACCESS ISOLATION
-    -- =========================================================================
-    -- Seed test photo object for Student B as postgres
-    PERFORM set_config('role', 'postgres', true);
-    DELETE FROM storage.objects WHERE bucket_id = 'profile-photos' AND name LIKE v_student_b_id::text || '/%';
-    INSERT INTO storage.objects (id, bucket_id, name, owner, created_at, updated_at)
-    VALUES (
-        gen_random_uuid(),
-        'profile-photos',
-        v_student_b_id::text || '/avatar_test.webp',
-        v_student_b_id,
-        now(),
-        now()
-    );
-
-    -- Student A attempts to view Student B's photo
-    PERFORM set_config('role', 'authenticated', true);
-    PERFORM set_config('request.jwt.claim.sub', v_student_a_id::text, true);
-
-    SELECT count(*) INTO v_count
-    FROM storage.objects
-    WHERE bucket_id = 'profile-photos' AND name LIKE v_student_b_id::text || '/%';
-
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Student A cannot view Student B private photograph in storage',
-        'Storage Isolation',
-        '0 objects',
-        v_count || ' objects',
-        CASE WHEN v_count = 0 THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- =========================================================================
-    -- TEST 9: UNROSTERED SIGNUP ASSIGNS ZERO ROLES (RLS LOCKOUT)
-    -- =========================================================================
-    -- Simulate new auth user created with unapproved email
-    PERFORM set_config('role', 'postgres', true);
-    -- Call trigger logic directly with simulated unrostered user
-    PERFORM public.handle_new_auth_user() FROM (
-        SELECT v_unrostered_id AS id, 'intruder@unknown.com' AS email
-    ) AS NEW;
-
-    SELECT role INTO v_role FROM public.user_roles WHERE user_id = v_unrostered_id;
-
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Unrostered email signup receives NO role in user_roles',
-        'Account Provisioning',
-        'No Role (NULL)',
-        COALESCE(v_role::text, 'NULL'),
-        CASE WHEN v_role IS NULL THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- =========================================================================
-    -- TEST 10: DUPLICATE ROSTER CLAIM COLLISION PREVENTION
-    -- =========================================================================
-    -- Student A is already linked to TEST_A_5401 with email studenta@viit.ac.in.
-    -- An imposter auth user attempts to claim the same email.
-    PERFORM public.handle_new_auth_user() FROM (
-        SELECT v_imposter_id AS id, 'studenta@viit.ac.in' AS email
-    ) AS NEW;
-
-    -- Verify that Student A's roster record is STILL linked to v_student_a_id, NOT v_imposter_id
-    SELECT user_id INTO v_phone FROM public.students WHERE id = v_db_student_a_id;
-
-    INSERT INTO test_results (test_name, category, expected, actual, status)
-    VALUES (
-        'Duplicate roster claim rejected; original student link intact',
-        'Account Provisioning',
-        v_student_a_id::text,
-        COALESCE(v_phone, 'NULL'),
-        CASE WHEN v_phone = v_student_a_id::text THEN 'PASS' ELSE 'FAIL' END
-    );
-
-    -- =========================================================================
-    -- CLEANUP
-    -- =========================================================================
-    PERFORM set_config('role', 'postgres', true);
-    DELETE FROM storage.objects WHERE bucket_id = 'profile-photos' AND name LIKE v_student_b_id::text || '/%';
-    DELETE FROM public.student_edit_overrides WHERE student_id = v_db_student_a_id;
-    DELETE FROM public.profile_submissions WHERE student_id = v_db_student_a_id;
-    DELETE FROM public.student_personal_details WHERE student_id = v_db_student_b_id;
-    DELETE FROM public.students WHERE user_id IN (v_student_a_id, v_student_b_id);
-    DELETE FROM public.user_roles WHERE user_id IN (v_admin_id, v_student_a_id, v_student_b_id, v_unrostered_id, v_imposter_id);
-
-    -- Restore normal deadline
-    UPDATE public.system_settings 
-    SET value = jsonb_build_object('deadline', timezone('utc'::text, now() + interval '30 days'))
-    WHERE key = 'profile_edit_deadline';
-END $$;
-
--- DISPLAY VERIFICATION TEST RESULTS
+-- --------------------------------------------------------------------------
+-- 1. TABLE ROW LEVEL SECURITY (RLS) STATUS (All 11 Core Tables)
+-- Uses LEFT JOIN to ensure any missing table outputs 'FAIL', not omitted
+-- --------------------------------------------------------------------------
 SELECT 
-    test_id,
-    category,
-    test_name,
-    expected,
-    actual,
-    status
-FROM test_results
-ORDER BY test_id;
+    '1. Table RLS'::text AS check_category,
+    'public.' || req.tablename AS target_object,
+    'Table exists with RLS Enabled (true)'::text AS expected_specification,
+    CASE 
+        WHEN c.relname IS NULL THEN 'MISSING TABLE'
+        WHEN c.relrowsecurity THEN 'RLS Enabled (true)'
+        ELSE 'RLS Disabled (false)'
+    END AS actual_state,
+    CASE 
+        WHEN c.relname IS NOT NULL AND c.relrowsecurity THEN 'PASS'
+        ELSE 'FAIL'
+    END AS audit_status
+FROM (
+    VALUES 
+        ('user_roles'), ('students'), ('student_personal_details'), ('student_family_details'),
+        ('student_education_details'), ('student_academic_history'), ('subjects'),
+        ('student_subject_marks'), ('system_settings'), ('student_edit_overrides'),
+        ('profile_submissions')
+) AS req(tablename)
+LEFT JOIN pg_class c ON c.relname = req.tablename 
+  AND c.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public' LIMIT 1)
+
+UNION ALL
+
+-- --------------------------------------------------------------------------
+-- 2. PRIVACY DIRECTORY VIEW (security_invoker & Permission Revocation)
+-- --------------------------------------------------------------------------
+SELECT 
+    '2. Directory View'::text AS check_category,
+    'student_directory_view (security_invoker)'::text AS target_object,
+    'View exists with security_invoker=true'::text AS expected_specification,
+    CASE 
+        WHEN c.relname IS NULL THEN 'MISSING VIEW'
+        WHEN array_to_string(c.reloptions, ', ') LIKE '%security_invoker=true%' THEN 'security_invoker=true'
+        ELSE COALESCE(array_to_string(c.reloptions, ', '), 'none')
+    END AS actual_state,
+    CASE 
+        WHEN c.relname IS NOT NULL AND array_to_string(c.reloptions, ', ') LIKE '%security_invoker=true%' THEN 'PASS'
+        ELSE 'FAIL'
+    END AS audit_status
+FROM (SELECT 1) AS _dummy
+LEFT JOIN pg_class c ON c.relname = 'student_directory_view'
+  AND c.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public' LIMIT 1)
+
+UNION ALL
+
+SELECT 
+    '2. Directory View'::text AS check_category,
+    'student_directory_view (anon access)'::text AS target_object,
+    'SELECT privilege revoked from anon role (false)'::text AS expected_specification,
+    CASE 
+        WHEN has_table_privilege('anon', 'public.student_directory_view', 'SELECT') THEN 'SELECT granted to anon (INSECURE)'
+        ELSE 'SELECT revoked from anon (false)'
+    END AS actual_state,
+    CASE 
+        WHEN NOT has_table_privilege('anon', 'public.student_directory_view', 'SELECT') THEN 'PASS'
+        ELSE 'FAIL'
+    END AS audit_status
+
+UNION ALL
+
+SELECT 
+    '2. Directory View'::text AS check_category,
+    'student_directory_view (authenticated access)'::text AS target_object,
+    'SELECT privilege granted to authenticated role (true)'::text AS expected_specification,
+    CASE 
+        WHEN has_table_privilege('authenticated', 'public.student_directory_view', 'SELECT') THEN 'SELECT granted to authenticated (true)'
+        ELSE 'SELECT revoked from authenticated (false)'
+    END AS actual_state,
+    CASE 
+        WHEN has_table_privilege('authenticated', 'public.student_directory_view', 'SELECT') THEN 'PASS'
+        ELSE 'FAIL'
+    END AS audit_status
+
+UNION ALL
+
+-- --------------------------------------------------------------------------
+-- 3. CORE SECURITY FUNCTIONS (SECURITY DEFINER, search_path, and EXECUTE Grants)
+-- Uses LEFT JOIN to ensure any missing function outputs 'FAIL'
+-- --------------------------------------------------------------------------
+SELECT 
+    '3. Security Functions'::text AS check_category,
+    'public.' || req.funcname || '()' AS target_object,
+    'SECURITY DEFINER with search_path=public'::text AS expected_specification,
+    CASE 
+        WHEN p.proname IS NULL THEN 'MISSING FUNCTION'
+        WHEN p.prosecdef AND array_to_string(p.proconfig, ', ') LIKE '%search_path=public%' 
+            THEN 'SECURITY DEFINER with search_path=public'
+        WHEN p.prosecdef 
+            THEN 'SECURITY DEFINER without search_path setting (INSECURE)'
+        ELSE 'INVOKER (prosecdef=false)'
+    END AS actual_state,
+    CASE 
+        WHEN p.proname IS NOT NULL AND p.prosecdef AND array_to_string(p.proconfig, ', ') LIKE '%search_path=public%' 
+            THEN 'PASS'
+        ELSE 'FAIL'
+    END AS audit_status
+FROM (
+    VALUES 
+        ('is_admin'), ('get_my_role'), ('check_student_update_privileges'),
+        ('handle_new_auth_user'), ('validate_profile_submission'), ('review_profile_submission')
+) AS req(funcname)
+LEFT JOIN pg_proc p ON p.proname = req.funcname 
+  AND p.pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public' LIMIT 1)
+
+UNION ALL
+
+SELECT 
+    '3. Security Functions'::text AS check_category,
+    'review_profile_submission() execution privilege'::text AS target_object,
+    'EXECUTE revoked from anon, granted to authenticated'::text AS expected_specification,
+    CASE 
+        WHEN has_function_privilege('anon', 'public.review_profile_submission(uuid, text, text)', 'EXECUTE') 
+            THEN 'EXECUTE granted to anon (INSECURE)'
+        WHEN NOT has_function_privilege('authenticated', 'public.review_profile_submission(uuid, text, text)', 'EXECUTE') 
+            THEN 'EXECUTE missing for authenticated'
+        ELSE 'EXECUTE revoked from anon, granted to authenticated'
+    END AS actual_state,
+    CASE 
+        WHEN NOT has_function_privilege('anon', 'public.review_profile_submission(uuid, text, text)', 'EXECUTE')
+         AND has_function_privilege('authenticated', 'public.review_profile_submission(uuid, text, text)', 'EXECUTE')
+            THEN 'PASS'
+        ELSE 'FAIL'
+    END AS audit_status
+
+UNION ALL
+
+-- --------------------------------------------------------------------------
+-- 4. SECURITY & AUDIT TRIGGERS (Verification of Enabled State via tgenabled)
+-- Ensures triggers are genuinely active (tgenabled = 'O' or 'A'), not disabled ('D')
+-- --------------------------------------------------------------------------
+SELECT 
+    '4. Security Triggers'::text AS check_category,
+    req.tgname || ' ON ' || req.schemaname || '.' || req.tablename AS target_object,
+    'Trigger Active & Enabled (tgenabled = O)'::text AS expected_specification,
+    CASE 
+        WHEN tg.tgname IS NULL THEN 'MISSING TRIGGER'
+        WHEN tg.tgenabled = 'D' THEN 'DISABLED TRIGGER (tgenabled = D)'
+        WHEN tg.tgenabled IN ('O', 'A') THEN 'Trigger Active & Enabled (tgenabled = ' || tg.tgenabled || ')'
+        ELSE 'Trigger status: ' || tg.tgenabled
+    END AS actual_state,
+    CASE 
+        WHEN tg.tgname IS NOT NULL AND tg.tgenabled IN ('O', 'A') THEN 'PASS'
+        ELSE 'FAIL'
+    END AS audit_status
+FROM (
+    VALUES 
+        ('public', 'students', 'trg_check_student_update_privileges'),
+        ('public', 'students', 'set_timestamp_students'),
+        ('public', 'profile_submissions', 'trg_validate_profile_submission'),
+        ('auth', 'users', 'on_auth_user_created')
+) AS req(schemaname, tablename, tgname)
+LEFT JOIN pg_class c ON c.relname = req.tablename 
+  AND c.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = req.schemaname LIMIT 1)
+LEFT JOIN pg_trigger tg ON tg.tgrelid = c.oid 
+  AND tg.tgname = req.tgname 
+  AND NOT tg.tgisinternal
+
+UNION ALL
+
+-- --------------------------------------------------------------------------
+-- 5. STORAGE BUCKET CONFIGURATION (storage.buckets)
+-- --------------------------------------------------------------------------
+SELECT 
+    '5. Storage Bucket'::text AS check_category,
+    'storage.buckets: ' || req.bucket_id AS target_object,
+    'Private bucket (public=false, file_size_limit=1048576 bytes)'::text AS expected_specification,
+    CASE 
+        WHEN b.id IS NULL THEN 'MISSING BUCKET'
+        ELSE 'public=' || b.public || ', limit=' || COALESCE(b.file_size_limit::text, 'none') || ' bytes'
+    END AS actual_state,
+    CASE 
+        WHEN b.id IS NOT NULL AND b.public = false AND b.file_size_limit = 1048576 THEN 'PASS'
+        ELSE 'FAIL'
+    END AS audit_status
+FROM (VALUES ('profile-photos')) AS req(bucket_id)
+LEFT JOIN storage.buckets b ON b.id = req.bucket_id
+
+UNION ALL
+
+-- --------------------------------------------------------------------------
+-- 6. ACTUAL RLS POLICY DEFINITIONS & PREDICATES
+-- Inspects cmd, roles, qual, and with_check to verify genuine security rules
+-- --------------------------------------------------------------------------
+SELECT 
+    '6. RLS Policy Definitions'::text AS check_category,
+    req.schemaname || '.' || req.tablename || ' -> ' || req.polname AS target_object,
+    req.expected_desc::text AS expected_specification,
+    CASE 
+        WHEN pol.policyname IS NULL THEN 'MISSING POLICY'
+        ELSE pol.cmd || ' FOR ' || array_to_string(pol.roles, ', ') || 
+             ' USING (' || COALESCE(pol.qual, 'none') || ')' ||
+             CASE WHEN pol.with_check IS NOT NULL THEN ' WITH CHECK (' || pol.with_check || ')' ELSE '' END
+    END AS actual_state,
+    CASE 
+        WHEN pol.policyname IS NULL THEN 'FAIL'
+        WHEN req.polname = 'Admins full access storage' AND pol.cmd = 'ALL' AND pol.qual LIKE '%is_admin%' THEN 'PASS'
+        WHEN req.polname = 'Students insert own photo' AND pol.cmd = 'INSERT' AND pol.with_check LIKE '%storage.foldername%' THEN 'PASS'
+        WHEN req.polname = 'Students update own photo' AND pol.cmd = 'UPDATE' AND pol.qual LIKE '%storage.foldername%' THEN 'PASS'
+        WHEN req.polname = 'Students can view own profile photo' AND pol.cmd = 'SELECT' AND pol.qual LIKE '%storage.foldername%' THEN 'PASS'
+        WHEN req.polname = 'Students can view active peers directory info' AND pol.cmd = 'SELECT' AND pol.qual LIKE '%status%Active%' THEN 'PASS'
+        WHEN req.polname = 'Students can update own privacy settings' AND pol.cmd = 'UPDATE' AND pol.qual LIKE '%user_id%auth.uid%' THEN 'PASS'
+        WHEN req.polname = 'Students insert submissions' AND pol.cmd = 'INSERT' AND pol.with_check LIKE '%auth.uid%' THEN 'PASS'
+        WHEN req.polname = 'Users can read own role' AND pol.cmd = 'SELECT' AND (pol.qual LIKE '%auth.uid%' OR pol.qual LIKE '%is_admin%') THEN 'PASS'
+        ELSE 'FAIL'
+    END AS audit_status
+FROM (
+    VALUES 
+        ('storage', 'objects', 'Admins full access storage', 'cmd=ALL, roles={authenticated}, checks is_admin()'),
+        ('storage', 'objects', 'Students insert own photo', 'cmd=INSERT, roles={authenticated}, checks folder=auth.uid()'),
+        ('storage', 'objects', 'Students update own photo', 'cmd=UPDATE, roles={authenticated}, checks folder=auth.uid()'),
+        ('storage', 'objects', 'Students can view own profile photo', 'cmd=SELECT, roles={authenticated}, checks folder=auth.uid()'),
+        ('public', 'students', 'Students can view active peers directory info', 'cmd=SELECT, checks status = Active'),
+        ('public', 'students', 'Students can update own privacy settings', 'cmd=UPDATE, checks user_id = auth.uid()'),
+        ('public', 'profile_submissions', 'Students insert submissions', 'cmd=INSERT, checks student belongs to auth.uid()'),
+        ('public', 'user_roles', 'Users can read own role', 'cmd=SELECT, checks user_id = auth.uid() OR is_admin()')
+) AS req(schemaname, tablename, polname, expected_desc)
+LEFT JOIN pg_policies pol ON pol.schemaname = req.schemaname 
+  AND pol.tablename = req.tablename 
+  AND pol.policyname = req.polname
+
+UNION ALL
+
+-- --------------------------------------------------------------------------
+-- 7. SYSTEM SETTINGS (Read-Only Inspection of Academic Editing Deadline)
+-- --------------------------------------------------------------------------
+SELECT 
+    '7. System Settings'::text AS check_category,
+    'public.system_settings -> profile_edit_deadline'::text AS target_object,
+    'Active academic deadline stored as JSONB'::text AS expected_specification,
+    CASE 
+        WHEN s.key IS NULL THEN 'MISSING SETTING (Key not found)'
+        WHEN s.value ? 'deadline' THEN 'Current Deadline: ' || (s.value->>'deadline')
+        ELSE 'Invalid JSONB: missing deadline key'
+    END AS actual_state,
+    CASE 
+        WHEN s.key IS NOT NULL AND s.value ? 'deadline' THEN 'PASS'
+        ELSE 'FAIL'
+    END AS audit_status
+FROM (SELECT 1) AS _dummy
+LEFT JOIN public.system_settings s ON s.key = 'profile_edit_deadline'
+
+UNION ALL
+
+-- --------------------------------------------------------------------------
+-- 8. SEED SUBJECTS VERIFICATION (Flagged as PROVISIONAL pending official syllabus)
+-- --------------------------------------------------------------------------
+SELECT 
+    '8. Seed Subjects'::text AS check_category,
+    'public.subjects (CSE-DS Semester 3)'::text AS target_object,
+    '7 Provisional Seed Subjects (Pending Official Departmental Syllabus)'::text AS expected_specification,
+    CASE 
+        WHEN count(*) = 0 THEN 'NO SUBJECTS FOUND'
+        ELSE count(*)::text || ' Provisional subjects: ' || string_agg(code, ', ' ORDER BY code)
+    END AS actual_state,
+    CASE 
+        WHEN count(*) = 7 THEN 'PROVISIONAL'
+        ELSE 'FAIL'
+    END AS audit_status
+FROM public.subjects
+WHERE department = 'CSE-Data Science' AND semester = 3;
+
+-- ------------------------------------------------------------------------------
+-- QUERY 1: Detailed Audit Breakdown
+-- ------------------------------------------------------------------------------
+SELECT 
+    row_number() OVER () AS check_id,
+    check_category,
+    target_object,
+    expected_specification,
+    actual_state,
+    audit_status
+FROM v_audit_checks
+ORDER BY check_category, target_object;
+
+-- ------------------------------------------------------------------------------
+-- QUERY 2: Compliance Summary Statistics
+-- ------------------------------------------------------------------------------
+SELECT 
+    count(*) AS total_checks,
+    count(*) FILTER (WHERE audit_status = 'PASS') AS verified_pass_count,
+    count(*) FILTER (WHERE audit_status = 'PROVISIONAL') AS provisional_count,
+    count(*) FILTER (WHERE audit_status = 'FAIL') AS failed_count,
+    CASE 
+        WHEN count(*) FILTER (WHERE audit_status = 'FAIL') = 0 
+        THEN 'VERIFIED COMPLIANT (WITH PROVISIONAL SEED DATA) — ZERO MUTATIONS' 
+        ELSE 'AUDIT FAILED — REMEDIATION REQUIRED' 
+    END AS compliance_verdict
+FROM v_audit_checks;

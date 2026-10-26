@@ -1,8 +1,7 @@
 import * as React from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { Eye, EyeOff, Lock, Mail, ArrowRight, ShieldCheck, Sparkles, UserCheck, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, ShieldCheck, Loader2, Info } from 'lucide-react'
 import { Logo } from '@/components/shared/Logo'
-import { DemoNotice } from '@/components/shared/DemoNotice'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog } from '@/components/ui/dialog'
@@ -11,7 +10,7 @@ import { useAuth } from '@/app/providers/AuthContext'
 export const StudentLogin: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { signInWithPassword, resetPasswordForEmail, loginAsDemo, isConfigured, isDemoAllowed } = useAuth()
+  const { signInWithPassword, resetPasswordForEmail } = useAuth()
 
   const [email, setEmail] = React.useState('')
   const [password, setPassword] = React.useState('')
@@ -28,7 +27,7 @@ export const StudentLogin: React.FC = () => {
     setErrorMessage(null)
 
     if (!email.trim() || !password.trim()) {
-      setErrorMessage('Please enter both your college email and password.')
+      setErrorMessage('Please enter both your registered portal email and password.')
       return
     }
 
@@ -46,12 +45,6 @@ export const StudentLogin: React.FC = () => {
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleDemoLogin = () => {
-    if (!isDemoAllowed) return
-    loginAsDemo('student', '23L31A5401')
-    navigate('/student', { replace: true })
   }
 
   const handleForgotSubmit = async (e: React.FormEvent) => {
@@ -72,81 +65,53 @@ export const StudentLogin: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 selection:bg-purple-100 selection:text-purple-900">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-3">
         <div className="inline-block">
-          <Link to="/">
+          <Link to="/" title="Mentor Connect Homepage">
             <Logo size="lg" showTagline />
           </Link>
         </div>
-        <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
           Student Portal Login
-        </h2>
+        </h1>
         <p className="text-xs text-slate-500">
-          Enter your college email or explore the interactive student preview
+          Sign in to access your personal mentoring space, profile, and progress records.
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-6 shadow-xl shadow-slate-200/60 rounded-3xl border border-slate-200/80 sm:px-10 space-y-6">
-          {/* Direct Demo / Fast Access CTA (Visible in Development/Staging only) */}
-          {isDemoAllowed && (
-            <>
-              <div className="p-4 rounded-2xl bg-indigo-50/90 border border-indigo-100 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-indigo-900">
-                  <Sparkles className="h-4 w-4 text-indigo-600" />
-                  <span>Interactive Student Preview</span>
-                </div>
-                <p className="text-xs text-indigo-700 leading-relaxed">
-                  Explore the mobile-first student experience with preloaded CSE-Data Science 2nd-year profiles:
-                </p>
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={handleDemoLogin}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs py-2.5"
-                >
-                  <UserCheck className="h-4 w-4 mr-1.5" />
-                  Explore Student Demo (Aarav Sharma)
-                  <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-                </Button>
-              </div>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-200" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-3 text-slate-400 font-semibold tracking-wider">
-                    Or Sign In With Supabase
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
+        <div className="bg-white py-8 px-6 shadow-xl shadow-slate-200/60 rounded-3xl border border-slate-200/80 sm:px-10 space-y-5">
+          {/* Brief Invitation Instruction Notice */}
+          <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-100 text-purple-900 text-xs flex items-start gap-2.5">
+            <Info className="h-4 w-4 text-purple-700 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              Please enter the <strong>invited college email address</strong> where you received your registration link to access your verified student record.
+            </p>
+          </div>
 
           <form onSubmit={handleFormSubmit} className="space-y-4">
             {errorMessage && (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium leading-relaxed">
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium leading-relaxed">
                 {errorMessage}
               </div>
             )}
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                College Email
+                Registered Portal Email
               </label>
               <div className="relative">
                 <input
                   type="email"
-                  placeholder="e.g. aarav.23l31a5401@viit.ac.in"
+                  placeholder="student@institution.edu"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value)
                     setErrorMessage(null)
                   }}
                   required
-                  className="w-full h-10 pl-10 pr-3.5 text-sm rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                  className="w-full h-10 pl-10 pr-3.5 text-sm rounded-xl border border-slate-200 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
                 />
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               </div>
@@ -160,9 +125,9 @@ export const StudentLogin: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsForgotOpen(true)}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                  className="text-xs text-purple-700 hover:text-purple-900 font-medium"
                 >
-                  Forgot password?
+                  Forgot Password?
                 </button>
               </div>
               <div className="relative">
@@ -175,7 +140,7 @@ export const StudentLogin: React.FC = () => {
                     setErrorMessage(null)
                   }}
                   required
-                  className="w-full h-10 pl-10 pr-10 text-sm rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
+                  className="w-full h-10 pl-10 pr-10 text-sm rounded-xl border border-slate-200 focus:border-purple-600 focus:ring-2 focus:ring-purple-100 outline-none transition-all"
                 />
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <button
@@ -191,61 +156,51 @@ export const StudentLogin: React.FC = () => {
 
             <Button
               type="submit"
-              variant="outline"
               disabled={loading}
-              className="w-full mt-2 font-semibold"
+              className="w-full mt-2 bg-purple-700 hover:bg-purple-800 text-white font-semibold py-2.5 rounded-xl shadow-xs transition-colors"
             >
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Verifying Credentials...
+                  Signing In...
                 </>
               ) : (
-                'Sign In to Student Portal'
+                'Sign In'
               )}
             </Button>
           </form>
 
-          {isConfigured && (
-            <div className="pt-1">
-              <DemoNotice
-                variant="inline"
-                message="Connected to Supabase PostgreSQL. Authenticated student sessions will enforce isolation via RLS."
-              />
-            </div>
-          )}
-
-          <div className="pt-2 text-center text-xs text-slate-500">
+          <div className="pt-2 text-center text-xs text-slate-500 border-t border-slate-100">
             <span>Faculty or Administrator? </span>
-            <Link to="/login/admin" className="text-indigo-600 font-semibold hover:underline">
-              Switch to Admin Login
+            <Link to="/login/admin" className="text-purple-700 font-semibold hover:underline">
+              Switch to Faculty Login
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Forgot Password Dialog */}
+      {/* Account Activation & Forgot Password Dialog */}
       <Dialog
         isOpen={isForgotOpen}
         onClose={() => {
           setIsForgotOpen(false)
           setForgotSent(false)
         }}
-        title="Reset Student Password"
-        description="Receive a secure password recovery email via Supabase Auth."
+        title="Student Password Recovery"
+        description="Receive a secure link to reset your password or set up your initial account access."
       >
         {forgotSent ? (
           <div className="text-center py-4 space-y-3">
             <div className="h-12 w-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
               <ShieldCheck className="h-6 w-6" />
             </div>
-            <h4 className="font-bold text-slate-900 text-base">Recovery Link Dispatched</h4>
-            <p className="text-xs text-slate-600">
-              A password reset link has been dispatched to <strong>{forgotEmail}</strong>.
+            <h4 className="font-bold text-slate-900 text-base">Reset Link Sent</h4>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              A secure password reset link has been dispatched to <strong>{forgotEmail}</strong>. Please check your inbox and click the link to set your password.
             </p>
             <Button
               type="button"
-              variant="primary"
+              variant="outline"
               size="sm"
               onClick={() => {
                 setIsForgotOpen(false)
@@ -259,8 +214,8 @@ export const StudentLogin: React.FC = () => {
         ) : (
           <form onSubmit={handleForgotSubmit} className="space-y-4">
             <Input
-              label="Registered College Email"
-              placeholder="e.g. aarav.23l31a5401@viit.ac.in"
+              label="Registered Portal Email"
+              placeholder="student@institution.edu"
               value={forgotEmail}
               onChange={(e) => setForgotEmail(e.target.value)}
               required
@@ -274,7 +229,11 @@ export const StudentLogin: React.FC = () => {
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" size="sm" disabled={forgotLoading}>
+              <Button
+                type="submit"
+                disabled={forgotLoading}
+                className="bg-purple-700 hover:bg-purple-800 text-white font-semibold text-xs"
+              >
                 {forgotLoading ? 'Sending...' : 'Send Reset Link'}
               </Button>
             </div>

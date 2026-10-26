@@ -13,10 +13,12 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DemoNotice } from '@/components/shared/DemoNotice'
+import { useAuth } from '@/app/providers/AuthContext'
 import { Dialog } from '@/components/ui/dialog'
 import { MOCK_SURVEYS } from '@/data/mock'
 
 export const SurveyManagement: React.FC = () => {
+  const { isDemo } = useAuth()
   const [surveys] = React.useState(MOCK_SURVEYS)
   const [builderOpen, setBuilderOpen] = React.useState(false)
 
@@ -40,14 +42,16 @@ export const SurveyManagement: React.FC = () => {
           className="text-xs font-bold"
         >
           <Plus className="h-3.5 w-3.5 mr-1 text-purple-700" />
-          Create New Form (Builder Preview)
+          Create New Form
         </Button>
       </div>
 
-      <DemoNotice
-        variant="inline"
-        message="Interface Shell. In Stage 2, form responses will compile into exportable datasets (Excel, CSV, PDF) without third-party form dependencies."
-      />
+      {isDemo && (
+        <DemoNotice
+          variant="inline"
+          message="Demonstration Environment: Forms and surveys management preview."
+        />
+      )}
 
       <div className="grid gap-4">
         {surveys.map((srv) => (
@@ -93,7 +97,7 @@ export const SurveyManagement: React.FC = () => {
       <Dialog
         isOpen={builderOpen}
         onClose={() => setBuilderOpen(false)}
-        title="Custom Form Builder Preview"
+        title="Custom Form Builder"
         description="Configure titles, typed and multiple-choice questions, and target student cohorts."
         maxWidth="lg"
       >
@@ -118,7 +122,7 @@ export const SurveyManagement: React.FC = () => {
           </div>
 
           <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 space-y-2">
-            <span className="font-bold text-purple-950 block">Question 1 (Multiple Choice Preview):</span>
+            <span className="font-bold text-purple-950 block">Question 1 (Multiple Choice):</span>
             <p className="text-purple-800">“How satisfied are you with the DBMS Lab practical timings?”</p>
             <div className="space-y-1 pl-2 text-slate-600">
               <div>○ Very Satisfied</div>
@@ -132,7 +136,7 @@ export const SurveyManagement: React.FC = () => {
               Close
             </Button>
             <Button variant="primary" size="sm" onClick={() => setBuilderOpen(false)}>
-              Save Form Draft (Preview)
+              Save Form Draft
             </Button>
           </div>
         </div>

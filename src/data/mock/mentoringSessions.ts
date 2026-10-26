@@ -6,7 +6,7 @@ export const MOCK_SESSIONS: MentoringSession[] = [
     studentRollNumber: '23L31A5401',
     sessionNumber: 3,
     date: '2026-10-14',
-    facultyName: 'Dr. K. S. Rao',
+    facultyName: 'J. Siddartha Varma',
     beforeSession: {
       previousDiscussionSummary: 'Reviewed performance in Semester 1-2. Student expressed deep interest in Machine Learning pathways.',
       pendingCommitments: [
@@ -39,7 +39,7 @@ export const MOCK_SESSIONS: MentoringSession[] = [
     studentRollNumber: '23L31A5403',
     sessionNumber: 4,
     date: '2026-10-12',
-    facultyName: 'Dr. K. S. Rao',
+    facultyName: 'J. Siddartha Varma',
     beforeSession: {
       previousDiscussionSummary: 'Addressed Sem 1-2 Applied Physics backlog and irregular morning class attendance.',
       pendingCommitments: [
@@ -72,7 +72,7 @@ export const MOCK_SESSIONS: MentoringSession[] = [
     studentRollNumber: '23L31A5404',
     sessionNumber: 5,
     date: '2026-10-10',
-    facultyName: 'Dr. K. S. Rao',
+    facultyName: 'J. Siddartha Varma',
     beforeSession: {
       previousDiscussionSummary: 'Severe viral fever caused absence for nearly 12 days in September, dropping attendance to 71.8%.',
       pendingCommitments: [
@@ -106,7 +106,7 @@ export const MOCK_SESSIONS: MentoringSession[] = [
     studentRollNumber: '23L31A5406',
     sessionNumber: 2,
     date: '2026-10-15',
-    facultyName: 'Dr. K. S. Rao',
+    facultyName: 'J. Siddartha Varma',
     beforeSession: {
       previousDiscussionSummary: 'Discussed career clarity and hesitation in asking doubts during large class lectures.',
       pendingCommitments: [

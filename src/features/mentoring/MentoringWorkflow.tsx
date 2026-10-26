@@ -16,10 +16,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs } from '@/components/ui/tabs'
 import { DemoNotice } from '@/components/shared/DemoNotice'
+import { useAuth } from '@/app/providers/AuthContext'
 import { MOCK_STUDENTS, MOCK_SESSIONS } from '@/data/mock'
 import type { SessionOutcome } from '@/types'
 
 export const MentoringWorkflow: React.FC = () => {
+  const { isDemo } = useAuth()
   const [selectedStudentRoll, setSelectedStudentRoll] = React.useState('23L31A5403') // Chirag Varma
   const [stage, setStage] = React.useState<'before' | 'during' | 'after'>('before')
   const [sessionOutcome, setSessionOutcome] = React.useState<SessionOutcome>('Follow-up Required')
@@ -71,15 +73,17 @@ export const MentoringWorkflow: React.FC = () => {
         </div>
       </div>
 
-      <DemoNotice
-        variant="inline"
-        message="Structured Counselling Cycle: Stage 1 demonstrates the Before, During, and After session workflow."
-      />
+      {isDemo && (
+        <DemoNotice
+          variant="inline"
+          message="Demonstration Environment: Structured Before, During, and After session workflow preview."
+        />
+      )}
 
       {savedNotice && (
         <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs font-semibold flex items-center gap-2 animate-fade-in">
           <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-          <span>Session staged in memory. In Stage 2, counselling sessions will record to Supabase database.</span>
+          <span>Session notes recorded and staged successfully.</span>
         </div>
       )}
 

@@ -25,9 +25,9 @@ export const StudentDirectory: React.FC = () => {
     }
   }, [isConfigured])
 
-  // Combine real directory records or fall back to mock
+  // Combine real directory records or fall back to mock in demo mode
   const studentsToDisplay = React.useMemo(() => {
-    if (dbDirectory.length > 0) {
+    if (isConfigured) {
       return dbDirectory.map(item => ({
         fullName: item.name,
         rollNumber: item.roll_number,
@@ -52,7 +52,7 @@ export const StudentDirectory: React.FC = () => {
       isPhoneShared: s.rollNumber === '23L31A5401',
       isEmailShared: s.rollNumber === '23L31A5401'
     }))
-  }, [dbDirectory])
+  }, [isConfigured, dbDirectory])
 
   const filteredStudents = studentsToDisplay.filter(
     (s) =>
@@ -64,11 +64,11 @@ export const StudentDirectory: React.FC = () => {
     <div className="space-y-4 pb-6">
       <div className="flex items-center justify-between">
         <Link
-          to="/student/more"
+          to="/student"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to More</span>
+          <span>Back to Home</span>
         </Link>
         <span className="text-xs text-slate-400 font-mono">
           {studentsToDisplay.length} CSE-DS Mentees Listed

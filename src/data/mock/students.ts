@@ -79,7 +79,7 @@ export const MOCK_STUDENTS: StudentProfile[] = [
     profileCompletionPercent: 100,
     followUpPriority: 'Low',
     nextMentoringDate: '2026-10-28',
-    assignedMentor: 'Dr. K. S. Rao (Faculty Mentor, CSE-DS)',
+    assignedMentor: 'J. Siddartha Varma, Assistant Professor, CSE (Data Science)',
     notesCount: 4,
   },
   {
@@ -159,7 +159,7 @@ export const MOCK_STUDENTS: StudentProfile[] = [
     profileCompletionPercent: 92,
     followUpPriority: 'Normal',
     nextMentoringDate: '2026-10-29',
-    assignedMentor: 'Dr. K. S. Rao (Faculty Mentor, CSE-DS)',
+    assignedMentor: 'J. Siddartha Varma, Assistant Professor, CSE (Data Science)',
     notesCount: 2,
   },
   {
@@ -240,7 +240,7 @@ export const MOCK_STUDENTS: StudentProfile[] = [
     profileCompletionPercent: 85,
     followUpPriority: 'Medium',
     nextMentoringDate: '2026-10-27',
-    assignedMentor: 'Dr. K. S. Rao (Faculty Mentor, CSE-DS)',
+    assignedMentor: 'J. Siddartha Varma, Assistant Professor, CSE (Data Science)',
     notesCount: 5,
   },
   {
@@ -321,7 +321,7 @@ export const MOCK_STUDENTS: StudentProfile[] = [
     profileCompletionPercent: 95,
     followUpPriority: 'High',
     nextMentoringDate: '2026-10-26',
-    assignedMentor: 'Dr. K. S. Rao (Faculty Mentor, CSE-DS)',
+    assignedMentor: 'J. Siddartha Varma, Assistant Professor, CSE (Data Science)',
     notesCount: 6,
   },
   {
@@ -402,7 +402,7 @@ export const MOCK_STUDENTS: StudentProfile[] = [
     profileCompletionPercent: 100,
     followUpPriority: 'Low',
     nextMentoringDate: '2026-11-03',
-    assignedMentor: 'Dr. K. S. Rao (Faculty Mentor, CSE-DS)',
+    assignedMentor: 'J. Siddartha Varma, Assistant Professor, CSE (Data Science)',
     notesCount: 3,
   },
   {
@@ -483,7 +483,7 @@ export const MOCK_STUDENTS: StudentProfile[] = [
     profileCompletionPercent: 96,
     followUpPriority: 'Medium',
     nextMentoringDate: '2026-10-30',
-    assignedMentor: 'Dr. K. S. Rao (Faculty Mentor, CSE-DS)',
+    assignedMentor: 'J. Siddartha Varma, Assistant Professor, CSE (Data Science)',
     notesCount: 4,
   },
   {
@@ -564,7 +564,7 @@ export const MOCK_STUDENTS: StudentProfile[] = [
     profileCompletionPercent: 88,
     followUpPriority: 'Normal',
     nextMentoringDate: '2026-10-31',
-    assignedMentor: 'Dr. K. S. Rao (Faculty Mentor, CSE-DS)',
+    assignedMentor: 'J. Siddartha Varma, Assistant Professor, CSE (Data Science)',
     notesCount: 2,
   },
 ]

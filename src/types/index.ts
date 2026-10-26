@@ -19,6 +19,32 @@ export type SessionOutcome =
   | 'Referred'
 
 export type AttendanceHealth = 'Good' | 'Warning' | 'Critical'
+ 
+export type SkillProficiency = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert'
+
+export interface TechnicalSkill {
+  id?: string
+  name: string
+  proficiency: SkillProficiency
+}
+
+export type AchievementCategory =
+  | 'workshop'
+  | 'training'
+  | 'certification'
+  | 'competition'
+  | 'project'
+  | 'other'
+
+export interface AchievementRecord {
+  id: string
+  studentId?: string
+  category: AchievementCategory
+  title: string
+  organizer?: string
+  dateOrYear?: string
+  description?: string
+}
 
 export interface CommitmentItem {
   id: string
@@ -168,9 +194,13 @@ export interface StudentProfile {
   careerInterests: string[]
   higherEducationAspirations: string
   desiredTechnicalSkills: string[]
+  technicalSkillsList?: TechnicalSkill[]
   softSkills: string[]
   personalStrengths: string[]
   developmentGoals: string[]
+  hobbies?: string[]
+  shortTermGoals?: string[]
+  longTermGoals?: string[]
 
   // Section G: Activities & Achievements
   workshops: string[]
@@ -179,6 +209,7 @@ export interface StudentProfile {
   competitions: string[]
   sportsCultural: string[]
   otherAchievements: string[]
+  achievementsList?: AchievementRecord[]
 
   // Administrative metadata
   profileStatus: ProfileStatus

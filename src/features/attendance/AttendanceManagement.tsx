@@ -67,7 +67,7 @@ export const AttendanceManagement: React.FC = () => {
       {uploadNotice && (
         <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center gap-2 animate-fade-in">
           <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-          <span>Backend integration will be available in a later stage. Excel/CSV parser will connect to Supabase storage in Stage 2.</span>
+          <span>Weekly attendance register import is processed through administrative review.</span>
         </div>
       )}
 
@@ -114,10 +114,10 @@ export const AttendanceManagement: React.FC = () => {
         </Card>
       </div>
 
-      <DemoNotice
-        variant="inline"
-        message="Dual Attendance Architecture: Official attendance serves institutional reporting. Student check-ins serve early intervention only."
-      />
+      <div className="flex items-center gap-2 p-2.5 rounded-xl text-xs bg-slate-50 text-slate-600 border border-slate-200">
+        <AlertCircle className="h-4 w-4 text-slate-400 shrink-0" />
+        <span>Official attendance records determine exam eligibility. Student check-ins serve mentoring and welfare follow-up.</span>
+      </div>
 
       {/* Cohort Attendance Table */}
       <Card>

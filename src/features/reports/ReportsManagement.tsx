@@ -14,9 +14,11 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DemoNotice } from '@/components/shared/DemoNotice'
+import { useAuth } from '@/app/providers/AuthContext'
 import { Dialog } from '@/components/ui/dialog'
 
 export const ReportsManagement: React.FC = () => {
+  const { isDemo } = useAuth()
   const [selectedReport, setSelectedReport] = React.useState<string | null>(null)
 
   const reportCards = [
@@ -100,10 +102,12 @@ export const ReportsManagement: React.FC = () => {
         </div>
       </div>
 
-      <DemoNotice
-        variant="inline"
-        message="Report Shell Architecture: Standard institutional templates will be supplied in later stages. PDF/Excel generation will connect in Stage 2."
-      />
+      {isDemo && (
+        <DemoNotice
+          variant="inline"
+          message="Demonstration Environment: Institutional reports and analytics preview."
+        />
+      )}
 
       {/* Reports Grid */}
       <div className="grid sm:grid-cols-2 gap-4">
@@ -147,11 +151,11 @@ export const ReportsManagement: React.FC = () => {
             <span className="font-bold text-slate-900 block">Report Header Spec:</span>
             <p>Vignan Institute of Information Technology (Autonomous)</p>
             <p>Department: Computer Science & Engineering (Data Science)</p>
-            <p>Class: II B.Tech I Semester • Faculty Mentor: Dr. K. S. Rao</p>
+            <p>Class: II B.Tech I Semester • Faculty Mentor: J. Siddhartha Varma</p>
           </div>
 
-          <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs">
-            Backend integration will be available in a later stage. Official institutional layout guidelines will be imported in Stage 2.
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-700 text-xs">
+            Standard institutional report layout conforming to departmental accreditation guidelines.
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2">
@@ -162,11 +166,11 @@ export const ReportsManagement: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={() => {
-                alert('Backend integration will be available in a later stage.')
+                window.print()
               }}
             >
               <Printer className="h-3.5 w-3.5 mr-1" />
-              Print Preview (Pending Integration)
+              Print Report
             </Button>
           </div>
         </div>

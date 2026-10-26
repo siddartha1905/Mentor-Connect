@@ -6,8 +6,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DemoNotice } from '@/components/shared/DemoNotice'
 import { MOCK_SURVEYS } from '@/data/mock'
+import { useAuth } from '@/app/providers/AuthContext'
 
 export const StudentSurveys: React.FC = () => {
+  const { isDemo } = useAuth()
+  const availableSurveys = isDemo ? MOCK_SURVEYS : []
   const [selectedSurvey, setSelectedSurvey] = React.useState<string | null>(null)
   const [submitted, setSubmitted] = React.useState(false)
 
@@ -16,7 +19,7 @@ export const StudentSurveys: React.FC = () => {
   const [q2Elective, setQ2Elective] = React.useState('Deep Learning Foundations')
   const [q3Comments, setQ3Comments] = React.useState('')
 
-  const activeSurvey = MOCK_SURVEYS.find((s) => s.id === selectedSurvey) || MOCK_SURVEYS[0]
+  const activeSurvey = availableSurveys.find((s) => s.id === selectedSurvey) || availableSurveys[0] || null
 
   const handleSurveySubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -27,11 +30,11 @@ export const StudentSurveys: React.FC = () => {
     <div className="space-y-4 pb-6">
       <div className="flex items-center justify-between">
         <Link
-          to="/student/more"
+          to="/student"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to More</span>
+          <span>Back to Home</span>
         </Link>
         <span className="text-xs font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100 font-bold">
           Surveys Hub
@@ -48,14 +51,25 @@ export const StudentSurveys: React.FC = () => {
         </p>
       </div>
 
-      <DemoNotice
-        variant="inline"
-        message="Stage 1 Interactive Form Preview. Submissions are staged in memory; Supabase storage will connect in Stage 2."
-      />
+      {isDemo && (
+        <DemoNotice
+          variant="inline"
+          message="Demonstration Environment: Institutional feedback and elective surveys preview."
+        />
+      )}
 
       {/* Available Surveys List */}
       <div className="grid gap-3">
-        {MOCK_SURVEYS.map((survey) => (
+        {availableSurveys.length === 0 ? (
+          <div className="py-12 text-center bg-white rounded-2xl border border-slate-200 p-6 space-y-2">
+            <ClipboardList className="h-10 w-10 text-slate-300 mx-auto" />
+            <h4 className="text-sm font-bold text-slate-700">No Active Surveys</h4>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              Any feedback forms, elective surveys or pulse polls will be listed here when assigned.
+            </p>
+          </div>
+        ) : (
+          availableSurveys.map((survey) => (
           <Card
             key={survey.id}
             className={`p-4 transition-all cursor-pointer ${
@@ -88,17 +102,18 @@ export const StudentSurveys: React.FC = () => {
               </span>
             </div>
           </Card>
-        ))}
+        )))}
       </div>
 
       {/* Interactive Sample Response Form */}
-      <Card className="border-indigo-100 mt-4">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-bold flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-indigo-600" />
-            Sample Form Response: {activeSurvey.title}
-          </CardTitle>
-        </CardHeader>
+      {activeSurvey && (
+        <Card className="border-indigo-100 mt-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-indigo-600" />
+              Sample Form Response: {activeSurvey.title}
+            </CardTitle>
+          </CardHeader>
         <CardContent>
           {submitted ? (
             <div className="py-6 text-center space-y-2">
@@ -178,6 +193,7 @@ export const StudentSurveys: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   )
 }

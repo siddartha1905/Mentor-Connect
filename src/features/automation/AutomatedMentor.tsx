@@ -14,10 +14,12 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DemoNotice } from '@/components/shared/DemoNotice'
+import { useAuth } from '@/app/providers/AuthContext'
 import { MOCK_SCHEDULES } from '@/data/mock'
 import type { AutomatedScheduleRule } from '@/types'
 
 export const AutomatedMentor: React.FC = () => {
+  const { isDemo } = useAuth()
   const [schedules, setSchedules] = React.useState<AutomatedScheduleRule[]>(MOCK_SCHEDULES)
   const [toggleNotice, setToggleNotice] = React.useState<string | null>(null)
 
@@ -27,7 +29,7 @@ export const AutomatedMentor: React.FC = () => {
         if (s.id === id) {
           const updated = { ...s, isActive: !s.isActive }
           setToggleNotice(
-            `Rule "${s.title}" set to ${updated.isActive ? 'Active' : 'Disabled'} in preview mode.`
+            `Rule "${s.title}" set to ${updated.isActive ? 'Active' : 'Disabled'}.`
           )
           return updated
         }
@@ -52,7 +54,7 @@ export const AutomatedMentor: React.FC = () => {
 
         <Button variant="pastel-lavender" size="sm" className="text-xs font-bold">
           <Plus className="h-3.5 w-3.5 mr-1 text-purple-700" />
-          Create Scheduled Rule (Preview)
+          Create Scheduled Rule
         </Button>
       </div>
 
@@ -72,10 +74,12 @@ export const AutomatedMentor: React.FC = () => {
         </p>
       </div>
 
-      <DemoNotice
-        variant="inline"
-        message="Non-operational preview. Background chron jobs, external messaging APIs and push notifications will connect in later stages."
-      />
+      {isDemo && (
+        <DemoNotice
+          variant="inline"
+          message="Demonstration Environment: Automated check-in rules and notification schedule preview."
+        />
+      )}
 
       {toggleNotice && (
         <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-purple-950 text-xs font-semibold flex items-center gap-2 animate-fade-in">

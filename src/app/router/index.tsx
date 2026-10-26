@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { LandingPage } from '@/features/landing/LandingPage'
 import { StudentLogin } from '@/features/authentication/StudentLogin'
 import { AdminLogin } from '@/features/authentication/AdminLogin'
+import { ResetPassword } from '@/features/authentication/ResetPassword'
 import { ProtectedRoute } from '@/app/router/ProtectedRoute'
 
 // Layouts
@@ -35,8 +36,7 @@ const StudentDocuments = React.lazy(() => import('@/features/student/StudentDocu
 const StudentCalendar = React.lazy(() => import('@/features/student/StudentCalendar').then(m => ({ default: m.StudentCalendar })))
 const StudentSurveys = React.lazy(() => import('@/features/student/StudentSurveys').then(m => ({ default: m.StudentSurveys })))
 
-// Lazy-loaded Admin Screens (Heavy Chart & Table Modules)
-const AdminDashboard = React.lazy(() => import('@/features/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })))
+const AdminDashboard = React.lazy(() => import('@/features/admin/AdminDashboard').then(m => ({ default: m.default || m.AdminDashboard })))
 const Mentor360View = React.lazy(() => import('@/features/mentor360/Mentor360View').then(m => ({ default: m.Mentor360View })))
 const StudentList = React.lazy(() => import('@/features/admin/StudentList').then(m => ({ default: m.StudentList })))
 const ApprovalCentre = React.lazy(() => import('@/features/approvals/ApprovalCentre').then(m => ({ default: m.ApprovalCentre })))
@@ -44,6 +44,8 @@ const AttendanceManagement = React.lazy(() => import('@/features/attendance/Atte
 const AcademicManagement = React.lazy(() => import('@/features/academics/AcademicManagement').then(m => ({ default: m.AcademicManagement })))
 const MentoringWorkflow = React.lazy(() => import('@/features/mentoring/MentoringWorkflow').then(m => ({ default: m.MentoringWorkflow })))
 const AdminCommunication = React.lazy(() => import('@/features/communication/AdminCommunication').then(m => ({ default: m.AdminCommunication })))
+const DeadlineManagement = React.lazy(() => import('@/features/admin/DeadlineManagement').then(m => ({ default: m.DeadlineManagement })))
+const DevelopmentRoadmap = React.lazy(() => import('@/features/admin/DevelopmentRoadmap').then(m => ({ default: m.DevelopmentRoadmap })))
 const AutomatedMentor = React.lazy(() => import('@/features/automation/AutomatedMentor').then(m => ({ default: m.AutomatedMentor })))
 const GrowthActivities = React.lazy(() => import('@/features/admin/GrowthActivities').then(m => ({ default: m.GrowthActivities })))
 const SurveyManagement = React.lazy(() => import('@/features/surveys/SurveyManagement').then(m => ({ default: m.SurveyManagement })))
@@ -63,6 +65,10 @@ export const router = createBrowserRouter([
   {
     path: '/login/admin',
     element: <AdminLogin />,
+  },
+  {
+    path: '/login/reset-password',
+    element: <ResetPassword />,
   },
 
   // Student Mobile-first PWA Route Group
@@ -84,7 +90,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'check-in',
-        element: withSuspense(StudentCheckIn),
+        element: <Navigate to="/student" replace />,
       },
       {
         path: 'messages',
@@ -157,6 +163,14 @@ export const router = createBrowserRouter([
       {
         path: 'communication',
         element: withSuspense(AdminCommunication),
+      },
+      {
+        path: 'deadlines',
+        element: withSuspense(DeadlineManagement),
+      },
+      {
+        path: 'roadmap',
+        element: withSuspense(DevelopmentRoadmap),
       },
       {
         path: 'automation',

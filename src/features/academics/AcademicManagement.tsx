@@ -15,9 +15,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { DemoNotice } from '@/components/shared/DemoNotice'
+import { useAuth } from '@/app/providers/AuthContext'
 import { MOCK_STUDENTS } from '@/data/mock'
 
 export const AcademicManagement: React.FC = () => {
+  const { isDemo } = useAuth()
   const [isLocked, setIsLocked] = React.useState(false)
   const [lockNotice, setLockNotice] = React.useState<string | null>(null)
   const [searchTerm, setSearchTerm] = React.useState('')
@@ -89,10 +91,12 @@ export const AcademicManagement: React.FC = () => {
         </div>
       )}
 
-      <DemoNotice
-        variant="inline"
-        message="Fictional CSE-DS Semester 2-1 sample curriculum. Official institutional syllabus mapping will be supplied in later stages."
-      />
+      {isDemo && (
+        <DemoNotice
+          variant="inline"
+          message="Demonstration Environment: Semester 2-1 curriculum preview."
+        />
+      )}
 
       {/* Cohort Subject Overview */}
       <Card>
